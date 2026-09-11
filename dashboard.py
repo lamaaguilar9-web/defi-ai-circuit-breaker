@@ -320,5 +320,8 @@ def reset_breaker():
 
 
 if __name__ == "__main__":
-    print("Starting DeFi AI Circuit Breaker Dashboard on port 5055...")
-    uvicorn.run(app, host="127.0.0.1", port=5055, log_level="info")
+    import os
+    port = int(os.environ.get("PORT", 5055))
+    host = os.environ.get("HOST", "0.0.0.0")
+    print(f"Starting DeFi AI Circuit Breaker Dashboard on {host}:{port}...")
+    uvicorn.run(app, host=host, port=port, log_level="info")
