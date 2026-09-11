@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="DeFi AI Circuit Breaker" width="200"/>
+</p>
+
 # 🛡️ DeFi AI Circuit Breaker — Autonomous Exploit & Liquidity Guardian
 
 > **Sub-Second Autonomous On-Chain Protection for BNB Chain & Solana Liquidity Pools.**  
