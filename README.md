@@ -5,8 +5,10 @@
 
 [![Live Cloud Demo](https://img.shields.io/badge/Live%20Demo-VPS%20Active%2024%2F7-emerald?style=for-the-badge&logo=fastapi)](http://2.25.121.124:5055)
 [![Network](https://img.shields.io/badge/Chains-BNB%20Chain%20%7C%20Solana-yellow?style=for-the-badge)](https://bscscan.com)
+[![Watch Demo Video](https://img.shields.io/badge/▶_Watch_Demo_Video-Loom-625df5?style=for-the-badge&logo=loom&logoColor=white)](https://www.loom.com/share/b87e11e59ed946a39cba13331d8a24c7)
 
-🌐 **Live 24/7 Cloud Dashboard:** [http://2.25.121.124:5055](http://2.25.121.124:5055)
+🌐 **Live 24/7 Cloud Dashboard:** [http://2.25.121.124:5055](http://2.25.121.124:5055)  
+🎥 **Live Video Walkthrough:** [https://www.loom.com/share/b87e11e59ed946a39cba13331d8a24c7](https://www.loom.com/share/b87e11e59ed946a39cba13331d8a24c7)
 
 ---
 
