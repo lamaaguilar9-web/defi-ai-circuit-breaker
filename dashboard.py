@@ -65,12 +65,19 @@ HTML_TEMPLATE = """
             <div class="flex items-center gap-3">
                 <span class="text-3xl">🛡️</span>
                 <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white">DeFi AI <span class="text-emerald-400">Circuit Breaker</span></h1>
-                <span class="text-xs uppercase px-2.5 py-0.5 rounded-full font-bold bg-bnbgold/20 text-bnbgold border border-bnbgold/40">BNB Chain Flagship • Cross-Chain Sentinel</span>
+                <span id="eco-badge" class="text-xs uppercase px-2.5 py-0.5 rounded-full font-bold bg-bnbgold/20 text-bnbgold border border-bnbgold/40">BNB Chain Flagship • Cross-Chain Sentinel</span>
             </div>
-            <p class="text-xs md:text-sm text-slate-400 mt-1">Autonomous Sub-45ms Invariant Protection • Native BNB Chain Ecosystem (PancakeSwap & Venus) with Cross-Chain Defense</p>
+            <p id="eco-subtitle" class="text-xs md:text-sm text-slate-400 mt-1">Autonomous Sub-45ms Invariant Protection • Native BNB Chain Ecosystem (PancakeSwap & Venus) with Cross-Chain Defense</p>
         </div>
 
-        <div class="flex items-center gap-4">
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-1 bg-slate-900/90 border border-slate-800 rounded-xl p-1 text-xs">
+                <span class="text-slate-500 text-[10px] px-2 font-mono uppercase hidden sm:inline">Perspective:</span>
+                <button onclick="setEcosystem('bnb')" id="btn-eco-bnb" class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-bnbgold/20 text-bnbgold border border-bnbgold/40">BNB Chain</button>
+                <button onclick="setEcosystem('arbitrum')" id="btn-eco-arbitrum" class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all text-slate-400 hover:text-white">Arbitrum One</button>
+                <button onclick="setEcosystem('ethereum')" id="btn-eco-ethereum" class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all text-slate-400 hover:text-white">Ethereum</button>
+            </div>
+
             <div id="status-pill" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-mono text-sm shadow-lg shadow-emerald-950/50">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-live"></span>
                 <span id="system-status-text">ARMED & MONITORING</span>
@@ -83,9 +90,9 @@ HTML_TEMPLATE = """
         <!-- 4-Chain Telemetry Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- BNB Card -->
-            <div class="bg-cardbg border border-bnbgold/40 rounded-2xl p-5 shadow-xl shadow-bnbgold/5">
+            <div id="card-bnb" class="bg-cardbg border border-bnbgold/40 rounded-2xl p-5 shadow-xl shadow-bnbgold/5 transition-all">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span class="flex items-center gap-1.5"><span class="text-bnbgold font-bold">●</span> BNB Chain <span class="text-[10px] bg-bnbgold/20 text-bnbgold px-1.5 py-0.5 rounded font-bold border border-bnbgold/40">FLAGSHIP</span></span>
+                    <span class="flex items-center gap-1.5"><span class="text-bnbgold font-bold">●</span> BNB Chain <span id="badge-bnb-tag" class="text-[10px] bg-bnbgold/20 text-bnbgold px-1.5 py-0.5 rounded font-bold border border-bnbgold/40">FLAGSHIP</span></span>
                     <span id="bnb-status" class="text-emerald-400 font-mono">RPC Active</span>
                 </div>
                 <div class="mt-3">
@@ -99,9 +106,9 @@ HTML_TEMPLATE = """
             </div>
 
             <!-- Ethereum Card -->
-            <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+            <div id="card-ethereum" class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl transition-all">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span class="flex items-center gap-1.5"><span class="text-ethblue font-bold">●</span> Ethereum <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">INGRESS FEED</span></span>
+                    <span class="flex items-center gap-1.5"><span class="text-ethblue font-bold">●</span> Ethereum <span id="badge-eth-tag" class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">INGRESS FEED</span></span>
                     <span id="eth-status" class="text-emerald-400 font-mono">RPC Active</span>
                 </div>
                 <div class="mt-3">
@@ -115,9 +122,9 @@ HTML_TEMPLATE = """
             </div>
 
             <!-- Arbitrum Card -->
-            <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+            <div id="card-arbitrum" class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl transition-all">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span class="flex items-center gap-1.5"><span class="text-arbyellow font-bold">●</span> Arbitrum One <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">L2 INGRESS</span></span>
+                    <span class="flex items-center gap-1.5"><span class="text-arbyellow font-bold">●</span> Arbitrum One <span id="badge-arb-tag" class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">L2 INGRESS</span></span>
                     <span id="arb-status" class="text-emerald-400 font-mono">Sequencer OK</span>
                 </div>
                 <div class="mt-3">
@@ -131,7 +138,7 @@ HTML_TEMPLATE = """
             </div>
 
             <!-- Solana Card -->
-            <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+            <div id="card-solana" class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl transition-all">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
                     <span class="flex items-center gap-1.5"><span class="text-solpurple font-bold">●</span> Solana <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">CROSS-CHAIN</span></span>
                     <span class="text-emerald-400 font-mono">RPC Active</span>
@@ -330,6 +337,68 @@ HTML_TEMPLATE = """
             document.getElementById('inc-tx').innerText = '--';
             document.getElementById('inc-tx').className = 'text-slate-500 truncate mt-0.5';
         }
+
+        function setEcosystem(eco) {
+            const badge = document.getElementById('eco-badge');
+            const subtitle = document.getElementById('eco-subtitle');
+            const cardBnb = document.getElementById('card-bnb');
+            const cardEth = document.getElementById('card-ethereum');
+            const cardArb = document.getElementById('card-arbitrum');
+            const tagBnb = document.getElementById('badge-bnb-tag');
+            const tagEth = document.getElementById('badge-eth-tag');
+            const tagArb = document.getElementById('badge-arb-tag');
+            
+            // Reset buttons
+            ['bnb', 'arbitrum', 'ethereum'].forEach(e => {
+                const btn = document.getElementById('btn-eco-' + e);
+                if (btn) btn.className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all text-slate-400 hover:text-white';
+            });
+
+            // Reset card styling
+            cardBnb.className = 'bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl transition-all';
+            cardEth.className = 'bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl transition-all';
+            cardArb.className = 'bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl transition-all';
+            tagBnb.className = 'text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded';
+            tagBnb.innerText = 'MONITORED';
+            tagEth.className = 'text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded';
+            tagEth.innerText = 'INGRESS FEED';
+            tagArb.className = 'text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded';
+            tagArb.innerText = 'L2 INGRESS';
+
+            if (eco === 'arbitrum') {
+                badge.innerText = 'Arbitrum One Flagship • Nitro L2 Sentinel';
+                badge.className = 'text-xs uppercase px-2.5 py-0.5 rounded-full font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40';
+                subtitle.innerText = 'Autonomous Sub-45ms Invariant Protection • Native Arbitrum Ecosystem (Camelot & GMX) with Sequencer Delay Defense';
+                cardArb.className = 'bg-cardbg border border-sky-400/50 rounded-2xl p-5 shadow-xl shadow-sky-400/10 transition-all';
+                tagArb.className = 'text-[10px] bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded font-bold border border-sky-500/40';
+                tagArb.innerText = 'FLAGSHIP L2';
+                document.getElementById('btn-eco-arbitrum').className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-sky-500/20 text-sky-400 border border-sky-500/40';
+                changePool('Camelot_WETH_ARB');
+            } else if (eco === 'ethereum') {
+                badge.innerText = 'Ethereum Mainnet Flagship • EVM Guardian';
+                badge.className = 'text-xs uppercase px-2.5 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/40';
+                subtitle.innerText = 'Autonomous Sub-45ms Invariant Protection • Native Ethereum Ecosystem (Uniswap v3 & Aave v3) with Balance-Sheet Defense';
+                cardEth.className = 'bg-cardbg border border-indigo-400/50 rounded-2xl p-5 shadow-xl shadow-indigo-400/10 transition-all';
+                tagEth.className = 'text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-bold border border-indigo-500/40';
+                tagEth.innerText = 'FLAGSHIP EVM';
+                document.getElementById('btn-eco-ethereum').className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-indigo-500/20 text-indigo-400 border border-indigo-500/40';
+                changePool('Uniswap_v3_WETH_USDC');
+            } else {
+                badge.innerText = 'BNB Chain Flagship • Cross-Chain Sentinel';
+                badge.className = 'text-xs uppercase px-2.5 py-0.5 rounded-full font-bold bg-bnbgold/20 text-bnbgold border border-bnbgold/40';
+                subtitle.innerText = 'Autonomous Sub-45ms Invariant Protection • Native BNB Chain Ecosystem (PancakeSwap & Venus) with Cross-Chain Defense';
+                cardBnb.className = 'bg-cardbg border border-bnbgold/40 rounded-2xl p-5 shadow-xl shadow-bnbgold/5 transition-all';
+                tagBnb.className = 'text-[10px] bg-bnbgold/20 text-bnbgold px-1.5 py-0.5 rounded font-bold border border-bnbgold/40';
+                tagBnb.innerText = 'FLAGSHIP';
+                document.getElementById('btn-eco-bnb').className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-bnbgold/20 text-bnbgold border border-bnbgold/40';
+                changePool('PancakeSwap_WBNB_USDT');
+            }
+        }
+
+        // Initialize from URL parameter (?ecosystem=arbitrum / ?ecosystem=ethereum / default bnb)
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialEco = urlParams.get('ecosystem') || 'bnb';
+        setEcosystem(initialEco);
 
         // Auto-refresh telemetry every 6 seconds
         updateTelemetry();
