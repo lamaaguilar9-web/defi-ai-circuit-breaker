@@ -83,6 +83,9 @@ class CircuitBreaker:
         logger.info("[+] Multi-Chain Circuit Breaker reset to ARMED_MONITORING state.")
         return {"status": "success", "state": self.state, "reset_timestamp": time.time()}
 
+    def reset(self) -> Dict[str, Any]:
+        return self.reset_circuit()
+
     def get_status(self) -> Dict[str, Any]:
         return {
             "state": self.state,
