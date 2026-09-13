@@ -65,9 +65,9 @@ HTML_TEMPLATE = """
             <div class="flex items-center gap-3">
                 <span class="text-3xl">🛡️</span>
                 <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white">DeFi AI <span class="text-emerald-400">Circuit Breaker</span></h1>
-                <span class="text-xs uppercase px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Multi-Chain Sentinel v2.0</span>
+                <span class="text-xs uppercase px-2.5 py-0.5 rounded-full font-bold bg-bnbgold/20 text-bnbgold border border-bnbgold/40">BNB Chain Flagship • Cross-Chain Sentinel</span>
             </div>
-            <p class="text-xs md:text-sm text-slate-400 mt-1">Autonomous Sub-45ms Invariant Protection • BNB Chain, Ethereum, Arbitrum One & Solana</p>
+            <p class="text-xs md:text-sm text-slate-400 mt-1">Autonomous Sub-45ms Invariant Protection • Native BNB Chain Ecosystem (PancakeSwap & Venus) with Cross-Chain Defense</p>
         </div>
 
         <div class="flex items-center gap-4">
@@ -83,9 +83,9 @@ HTML_TEMPLATE = """
         <!-- 4-Chain Telemetry Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- BNB Card -->
-            <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+            <div class="bg-cardbg border border-bnbgold/40 rounded-2xl p-5 shadow-xl shadow-bnbgold/5">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span class="flex items-center gap-1.5"><span class="text-bnbgold font-bold">●</span> BNB Chain</span>
+                    <span class="flex items-center gap-1.5"><span class="text-bnbgold font-bold">●</span> BNB Chain <span class="text-[10px] bg-bnbgold/20 text-bnbgold px-1.5 py-0.5 rounded font-bold border border-bnbgold/40">FLAGSHIP</span></span>
                     <span id="bnb-status" class="text-emerald-400 font-mono">RPC Active</span>
                 </div>
                 <div class="mt-3">
@@ -101,7 +101,7 @@ HTML_TEMPLATE = """
             <!-- Ethereum Card -->
             <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span class="flex items-center gap-1.5"><span class="text-ethblue font-bold">●</span> Ethereum Mainnet</span>
+                    <span class="flex items-center gap-1.5"><span class="text-ethblue font-bold">●</span> Ethereum <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">INGRESS FEED</span></span>
                     <span id="eth-status" class="text-emerald-400 font-mono">RPC Active</span>
                 </div>
                 <div class="mt-3">
@@ -117,7 +117,7 @@ HTML_TEMPLATE = """
             <!-- Arbitrum Card -->
             <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span class="flex items-center gap-1.5"><span class="text-arbyellow font-bold">●</span> Arbitrum One L2</span>
+                    <span class="flex items-center gap-1.5"><span class="text-arbyellow font-bold">●</span> Arbitrum One <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">L2 INGRESS</span></span>
                     <span id="arb-status" class="text-emerald-400 font-mono">Sequencer OK</span>
                 </div>
                 <div class="mt-3">
@@ -133,7 +133,7 @@ HTML_TEMPLATE = """
             <!-- Solana Card -->
             <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span class="flex items-center gap-1.5"><span class="text-solpurple font-bold">●</span> Solana Sentinel</span>
+                    <span class="flex items-center gap-1.5"><span class="text-solpurple font-bold">●</span> Solana <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">CROSS-CHAIN</span></span>
                     <span class="text-emerald-400 font-mono">RPC Active</span>
                 </div>
                 <div class="mt-3">
