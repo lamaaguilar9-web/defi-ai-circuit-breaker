@@ -5,6 +5,7 @@ FastAPI + Tailwind visual command center monitoring BNB Chain liquidity pools
 Exclusively engineered for BNB Chain Builder Grants & Binance Agentic AI Challenge.
 """
 
+import os
 import time
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -378,5 +379,7 @@ def get_status():
     }
 
 if __name__ == "__main__":
-    print("[*] Starting DeFi AI Circuit Breaker (Dedicated BNB Chain Guardian) on port 5055...")
-    uvicorn.run(app, host="0.0.0.0", port=5055)
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", 5055))
+    print(f"[*] Starting DeFi AI Circuit Breaker (Dedicated BNB Chain Guardian) on {host}:{port}...")
+    uvicorn.run(app, host=host, port=port)

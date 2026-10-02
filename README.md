@@ -7,11 +7,11 @@
 > **Sub-45ms Autonomous On-Chain Exploit Prevention & Emergency Liquidity Halt for BNB Chain (BEP-20).**  
 > Dedicated real-time invariant defense for PancakeSwap v3 and Venus Protocol against flash-loan attacks and oracle drains.
 
-[![Live Cloud Demo](https://img.shields.io/badge/Live%20Demo-VPS%20Active%2024%2F7-emerald?style=for-the-badge&logo=fastapi)](http://2.25.121.124:5055)
+[![Telemetry Architecture](https://img.shields.io/badge/Telemetry-Loopback%20127.0.0.1%20Confined-emerald?style=for-the-badge&logo=fastapi)](https://github.com/lamaaguilar9-web/defi-ai-circuit-breaker)
 [![Network](https://img.shields.io/badge/Chain-BNB%20Chain%20(BEP--20)-F0B90B?style=for-the-badge&logo=binance)](https://bscscan.com)
 [![Watch Demo Video](https://img.shields.io/badge/▶_Watch_Demo_Video-Loom-625df5?style=for-the-badge&logo=loom&logoColor=white)](https://www.loom.com/share/1c2473fc60f2406e91377c5344005d9d)
 
-🌐 **Live 24/7 Cloud Dashboard:** [http://2.25.121.124:5055](http://2.25.121.124:5055)  
+🛡️ **Telemetry Dashboard:** Confinado a `127.0.0.1:5055` (Acceso seguro exclusivo vía túnel SSH)  
 🎥 **Official Video Walkthrough:** [https://www.loom.com/share/1c2473fc60f2406e91377c5344005d9d](https://www.loom.com/share/1c2473fc60f2406e91377c5344005d9d)
 
 ---
