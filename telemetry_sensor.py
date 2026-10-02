@@ -4,6 +4,8 @@ Monitors public RPC endpoints across BNB Chain, Ethereum, Arbitrum One, and Sola
 Queries real on-chain PancakeSwap v3 state via eth_call (slot0/liquidity) with zero fabricated constants (GLM DEFI-C3, C6, M7, M8).
 """
 
+import os
+import json
 import time
 import logging
 import threading
@@ -193,6 +195,9 @@ class TelemetrySensor:
             }
         }
 
+        # Load external pool config if available (GLM RADAR AR-2)
+        self.load_catalog_from_config()
+
         # Background daemon tracking state (GLM DEFI-C6)
         self._daemon_running = False
         self._daemon_thread: Optional[threading.Thread] = None
@@ -201,6 +206,28 @@ class TelemetrySensor:
         self.last_pancake_onchain_state: Dict[str, Any] = {}
         self.hwm_liquidity: Optional[int] = None
         self.baseline_price_usd: Optional[float] = None
+
+    def load_catalog_from_config(self, config_path: Optional[str] = None):
+        """Loads additional radar pools from JSON configuration dynamically (GLM RADAR AR-2)."""
+        cfg = config_path or os.path.join(os.path.dirname(__file__), "config", "radar_pools.json")
+        if not os.path.exists(cfg):
+            return
+        try:
+            with open(cfg, "r", encoding="utf-8") as f:
+                pools = json.load(f)
+                if isinstance(pools, list):
+                    for p in pools:
+                        chain_name = p.get("chain", "BNB Chain")
+                        chain_key = "BNB" if "BNB" in chain_name else ("ETHEREUM" if "Ethereum" in chain_name else ("ARBITRUM" if "Arbitrum" in chain_name else "OTHER"))
+                        if chain_key not in self.pools_directory:
+                            self.pools_directory[chain_key] = {}
+                        self.pools_directory[chain_key][p["pool_name"]] = {
+                            **p,
+                            "catalog_baseline": True,
+                            "healthy": True
+                        }
+        except Exception as e:
+            logger.debug(f"Catalog config load skipped: {e}")
 
     def get_pancakeswap_v3_onchain_state(self) -> Dict[str, Any]:
         """Queries live PancakeSwap v3 WBNB/USDT slot0() and liquidity() via real BSC eth_call."""
@@ -360,10 +387,11 @@ class TelemetrySensor:
                 })
         return result
 
-    def start_monitoring_daemon(self, risk_engine: Any, circuit_breaker: Any, poll_interval: float = 4.0):
+    def start_monitoring_daemon(self, risk_engine: Any, circuit_breaker: Any, radar: Optional[Any] = None, poll_interval: float = 4.0):
         """
         Background autonomous sensor daemon (GLM DEFI-C6).
-        Monitors live BSC blocks, evaluates delta changes against baseline, and trips breaker autonomously.
+        Monitors live BSC blocks, evaluates delta changes against baseline, trips breaker autonomously,
+        and triggers Radar Modo Sombra passive Telegram alerting (GLM RADAR MODO SOMBRA).
         """
         if self._daemon_running:
             return
@@ -371,7 +399,7 @@ class TelemetrySensor:
         self._daemon_running = True
 
         def _daemon_loop():
-            logger.info("[+] Autonomous Sensor Daemon loop started (Continuous BSC Invariant Monitor).")
+            logger.info("[+] Autonomous Sensor Daemon loop started (Continuous BSC Invariant Monitor + Radar Modo Sombra).")
             baseline_pool = self.sample_monitored_pool("PancakeSwap_WBNB_USDT")
             while self._daemon_running:
                 try:
@@ -383,6 +411,8 @@ class TelemetrySensor:
                         if evaluation.get("threat_score", 0.0) >= circuit_breaker.sensitivity_threshold:
                             logger.warning(f"[!] Autonomous Invariant Breach detected at block #{curr_block}!")
                             circuit_breaker.process_telemetry(evaluation)
+                        if radar:
+                            radar.evaluate_and_alert(current_pool, baseline_pool, curr_block, evaluation)
                 except Exception as e:
                     logger.debug(f"Sensor daemon iteration warning: {e}")
                 time.sleep(poll_interval)

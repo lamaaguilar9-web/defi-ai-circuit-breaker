@@ -121,6 +121,22 @@ When the Circuit Breaker trips, an immutable incident report is generated:
 
 ---
 
+## 🛰️ Radar "Modo Sombra" v1 (Passive Surveillance Engine)
+
+Passive, zero-privilege watcher monitoring public liquidity pools across BNB Chain, Ethereum, and Arbitrum:
+
+- **Strict Read-Only Mode (`SOLO_LECTURA`)**: Zero on-chain actions, zero private key requirements, zero external permissions.
+- **Instant Telegram Alerts**: Dispatched when `drain >= 20%` or `price_drop >= 15%`, detailing chain, pool, breach metrics, before/after TVL & price, on-chain block height, and timestamp.
+- **Dynamic Config Catalog**: Monitored pools defined in `config/radar_pools.json` without modifying agent source code.
+- **Deterministic Anti-Spam**: 15-minute cooldown per pool (`COOLDOWN_SECONDS = 900`) and a strict 20 alert daily quota (`MAX_DAILY_ALERTS = 20`).
+- **Append-Only Evidence Ledger**: All detections logged to `data/radar_incidents.jsonl` (git-ignored) providing timestamped proof-of-detection for institutional prospects.
+- **REST Endpoints & Verification**:
+  - `GET /api/radar/status`: Real-time runtime health, catalog size, and quota counters.
+  - `GET /api/radar/incidents`: Historical breach audit feed.
+  - `POST /api/radar/test-alert`: Protected test alert pathway labeled `[TEST] [RADAR solo lectura]` with full journal and Telegram verification.
+
+---
+
 ## 🏆 Active Hackathons & Capital Grants
 - **BNB Chain Builder Grant ($25,000 USD)** — Formally Submitted & in review with BNB Chain BD Team.
 - **CoinMarketCap "Build with CMC" Hackathon ($10,000 USD + $8.4k Pro Grants)** — DoraHacks Track: *AI Agents and Automation*.
@@ -129,3 +145,4 @@ When the Circuit Breaker trips, an immutable incident report is generated:
 
 ---
 *Developed by Luis Aguilar & SentinelLab AI.*
+

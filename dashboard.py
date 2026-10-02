@@ -15,12 +15,14 @@ from telemetry_sensor import TelemetrySensor
 from risk_engine import RiskEngine
 from circuit_breaker import CircuitBreaker
 from simulate_exploit import simulate_multi_chain_attack
+from radar_engine import RadarModoSombra
 
 app = FastAPI(title="DeFi AI Circuit Breaker - BNB Chain Guardian")
 
 sensor = TelemetrySensor()
 engine = RiskEngine()
 breaker = CircuitBreaker(sensitivity_threshold=0.82)
+radar = RadarModoSombra()
 
 current_pool_name = "PancakeSwap_WBNB_USDT"
 current_pool_state = sensor.sample_monitored_pool(current_pool_name)
@@ -365,8 +367,8 @@ HTML_TEMPLATE = """
 
 ADMIN_AUTH_TOKEN = os.environ.get("SENTINEL_ADMIN_KEY")
 
-# Start autonomous continuous sensor daemon on launch (GLM DEFI-C6)
-sensor.start_monitoring_daemon(engine, breaker)
+# Start autonomous continuous sensor daemon on launch (GLM DEFI-C6 + RADAR MODO SOMBRA)
+sensor.start_monitoring_daemon(engine, breaker, radar=radar)
 
 @app.get("/", response_class=HTMLResponse)
 def index():
@@ -416,8 +418,29 @@ def get_status():
     return {
         "network": "BNB Chain (BEP-20)",
         "breaker": breaker.get_status(),
+        "radar": radar.get_status(),
         "latest_incident": last_incident
     }
+
+@app.get("/api/radar/status")
+def get_radar_status():
+    return radar.get_status()
+
+@app.get("/api/radar/incidents")
+def get_radar_incidents(limit: int = 50):
+    return radar.get_recent_incidents(limit=limit)
+
+@app.post("/api/radar/test-alert")
+def trigger_radar_test_alert(request: Request):
+    if ADMIN_AUTH_TOKEN:
+        auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            auth_header = auth_header[7:].strip()
+        if auth_header != ADMIN_AUTH_TOKEN:
+            return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Test alert restricted to authorized operator"})
+    block = sensor.get_bnb_block_number() or 42718900
+    res = radar.send_test_alert(pool_name="PancakeSwap_WBNB_USDT", block_number=block)
+    return JSONResponse(content=res)
 
 if __name__ == "__main__":
     host = os.environ.get("HOST", "127.0.0.1")
