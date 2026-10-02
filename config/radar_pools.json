@@ -1,0 +1,52 @@
+[
+  {
+    "pool_name": "PancakeSwap_WBNB_USDT",
+    "chain": "BNB Chain",
+    "protocol": "PancakeSwap v3",
+    "protocol_type": "AMM_V3",
+    "address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+    "token0": "USDT",
+    "token1": "WBNB",
+    "token0_address": "0x55d398326f99059fF775485246999027B3197955",
+    "token1_address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+    "tvl_usd": 14500000.0,
+    "enabled": true
+  },
+  {
+    "pool_name": "Uniswap_v3_WETH_USDC",
+    "chain": "Ethereum",
+    "protocol": "Uniswap v3",
+    "protocol_type": "AMM_CONCENTRATED",
+    "address": "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640",
+    "token0": "USDC",
+    "token1": "WETH",
+    "token0_address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "token1_address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "tvl_usd": 58800000.0,
+    "enabled": true
+  },
+  {
+    "pool_name": "Camelot_v3_WETH_USDC",
+    "chain": "Arbitrum One",
+    "protocol": "Camelot v3",
+    "protocol_type": "AMM_V3",
+    "address": "0x521aa84ab3fcc4c05ceacc61fc7fe4f1c5423654",
+    "token0": "WETH",
+    "token1": "USDC",
+    "token0_address": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    "token1_address": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    "tvl_usd": 24000000.0,
+    "enabled": true
+  },
+  {
+    "pool_name": "Venus_Protocol_vBNB",
+    "chain": "BNB Chain",
+    "protocol": "Venus Protocol",
+    "protocol_type": "LENDING_ISOLATED",
+    "address": "0xA07c5b74C9B40447a954e1466938b865b6BBea36",
+    "token0": "vBNB",
+    "token1": "USDT",
+    "tvl_usd": 18200000.0,
+    "enabled": true
+  }
+]
