@@ -69,15 +69,38 @@ class ChainAdapter:
         return round(int(res, 16) / 1e9, 2) if res else None
 
     def get_summary(self) -> Dict[str, Any]:
-        block = self.get_block_number()
+        block_data, lat = self._post_rpc("eth_getBlockByNumber", ["latest", False])
         gas = self.get_gas_price()
-        _, lat = self._post_rpc("net_version", [])
+
+        block_num = None
+        tx_count = None
+        gas_used = None
+        gas_limit = None
+        gas_util = None
+
+        if block_data and isinstance(block_data, dict):
+            try:
+                block_num = int(block_data.get("number", "0x0"), 16)
+                tx_count = len(block_data.get("transactions", []))
+                gas_used = int(block_data.get("gasUsed", "0x0"), 16)
+                gas_limit = int(block_data.get("gasLimit", "0x1"), 16)
+                if gas_limit > 0:
+                    gas_util = round((gas_used / gas_limit) * 100, 1)
+            except Exception:
+                pass
+
+        if not block_num:
+            block_num = self.get_block_number()
+
         return {
-            "status": "online" if block else "offline",
+            "status": "online" if block_num else "offline",
             "chain": self.chain_name,
-            "block_number": block,
+            "block_number": block_num,
+            "gas_price_gwei": gas,
             "base_fee_gwei": gas,
-            "rpc_latency_ms": lat if block else None,
+            "tx_count": tx_count,
+            "gas_utilization_pct": gas_util,
+            "rpc_latency_ms": lat if block_num else None,
             "timestamp": time.time()
         }
 
@@ -105,11 +128,12 @@ class TelemetrySensor:
                     "chain": "BNB Chain",
                     "protocol": "PancakeSwap v3",
                     "protocol_type": "AMM_V3",
-                    "pool_address": self.PANCAKESWAP_V3_WBNB_USDT,
-                    "token0": "WBNB",
-                    "token1": "USDT",
-                    "reserve0": 12500.0,
-                    "reserve1": 7250000.0,
+                    "token0": "USDT",
+                    "token1": "WBNB",
+                    "token0_address": "0x55d398326f99059fF775485246999027B3197955",
+                    "token1_address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+                    "reserve0": 7250000.0,
+                    "reserve1": 12500.0,
                     "tvl_usd": 14500000.0,
                     "catalog_baseline": True,
                     "healthy": True
@@ -175,6 +199,8 @@ class TelemetrySensor:
         self._lock = threading.Lock()
         self.last_observed_block: Optional[int] = None
         self.last_pancake_onchain_state: Dict[str, Any] = {}
+        self.hwm_liquidity: Optional[int] = None
+        self.baseline_price_usd: Optional[float] = None
 
     def get_pancakeswap_v3_onchain_state(self) -> Dict[str, Any]:
         """Queries live PancakeSwap v3 WBNB/USDT slot0() and liquidity() via real BSC eth_call."""
@@ -188,6 +214,7 @@ class TelemetrySensor:
         sqrt_p = None
         tick = None
         liquidity = None
+        price_usd = None
 
         if slot0_hex and len(slot0_hex) >= 66:
             try:
@@ -195,6 +222,10 @@ class TelemetrySensor:
                 sqrt_p = int(clean[0:64], 16)
                 tick_raw = int(clean[64:128], 16)
                 tick = tick_raw if tick_raw < (1 << 255) else tick_raw - (1 << 256)
+                if sqrt_p > 0:
+                    # In PancakeSwap v3 WBNB/USDT: token0=USDT, token1=WBNB (18 decimals each)
+                    # Price of WBNB in USDT = (2^96 / sqrtPriceX96)^2
+                    price_usd = round((float(1 << 96) / float(sqrt_p)) ** 2, 2)
             except Exception:
                 pass
 
@@ -210,6 +241,7 @@ class TelemetrySensor:
             "sqrtPriceX96": sqrt_p,
             "tick": tick,
             "liquidity": liquidity,
+            "price_usd": price_usd,
             "latency_ms": lat,
             "timestamp": time.time()
         }
@@ -283,10 +315,34 @@ class TelemetrySensor:
                 if pool_name == "PancakeSwap_WBNB_USDT":
                     onchain = self.get_pancakeswap_v3_onchain_state()
                     pool["onchain_state"] = onchain
-                    if onchain.get("onchain_verified"):
-                        pool["sqrtPriceX96"] = onchain["sqrtPriceX96"]
+                    if onchain.get("onchain_verified") and onchain.get("liquidity") and onchain.get("sqrtPriceX96"):
+                        sqrt_p = onchain["sqrtPriceX96"]
+                        liq = onchain["liquidity"]
+                        curr_price = onchain.get("price_usd")
+
+                        with self._lock:
+                            if self.hwm_liquidity is None or liq > self.hwm_liquidity:
+                                self.hwm_liquidity = liq
+                            if (self.baseline_price_usd is None or self.baseline_price_usd <= 0) and curr_price:
+                                self.baseline_price_usd = curr_price
+
+                            hwm = self.hwm_liquidity
+                            base_price = self.baseline_price_usd
+
+                        liq_drain_pct = max(0.0, (hwm - liq) / hwm) if (hwm and hwm > 0) else 0.0
+                        price_drop_pct = max(0.0, (base_price - curr_price) / base_price) if (base_price and curr_price and base_price > 0) else 0.0
+
+                        pool["sqrtPriceX96"] = sqrt_p
                         pool["tick"] = onchain["tick"]
-                        pool["liquidity"] = onchain["liquidity"]
+                        pool["liquidity"] = liq
+                        pool["hwm_liquidity"] = hwm
+                        pool["live_price_usd"] = curr_price
+                        pool["baseline_price_usd"] = base_price
+                        pool["onchain_liquidity_drain_pct"] = round(liq_drain_pct * 100, 2)
+                        pool["onchain_price_drop_pct"] = round(price_drop_pct * 100, 2)
+
+                        base_tvl = self.pools_directory["BNB"]["PancakeSwap_WBNB_USDT"]["tvl_usd"]
+                        pool["tvl_usd"] = round(base_tvl * (1.0 - liq_drain_pct), 2)
                 return pool
         return dict(self.pools_directory["BNB"]["PancakeSwap_WBNB_USDT"])
 

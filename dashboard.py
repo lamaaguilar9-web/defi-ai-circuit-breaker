@@ -108,7 +108,7 @@ HTML_TEMPLATE = """
                     <div id="bnb-gas" class="text-xl font-mono font-bold text-white mt-0.5">--%</div>
                 </div>
                 <div class="mt-2 text-xs text-slate-400 flex justify-between">
-                    <span>Gas Price: <span class="text-slate-300 font-mono">3.0 Gwei</span></span>
+                    <span>Gas Price: <span id="bnb-gas-price" class="text-slate-300 font-mono">--</span></span>
                     <span>Txs: <span id="bnb-txs" class="text-slate-300 font-mono">--</span></span>
                 </div>
             </div>
@@ -117,15 +117,15 @@ HTML_TEMPLATE = """
             <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
                     <span class="flex items-center gap-1.5"><span class="text-emerald-400">💰</span> Protected Liquidity</span>
-                    <span class="text-emerald-400 font-mono">Secured</span>
+                    <span class="text-amber-400 font-mono">CATALOG</span>
                 </div>
                 <div class="mt-3">
-                    <div class="text-xs text-slate-400">Total Monitored TVL</div>
-                    <div class="text-xl font-mono font-bold text-emerald-400 mt-0.5">$41,600,000.00</div>
+                    <div class="text-xs text-slate-400">Total Monitored TVL (CATALOG)</div>
+                    <div id="catalog-total-tvl" class="text-xl font-mono font-bold text-emerald-400 mt-0.5">$32,700,000.00</div>
                 </div>
                 <div class="mt-2 text-xs text-slate-400 flex justify-between">
                     <span>Coverage: <span class="text-slate-300 font-mono">Pancake + Venus</span></span>
-                    <span>Status: <span class="text-emerald-400 font-mono">Active</span></span>
+                    <span>Baseline: <span class="text-amber-400 font-mono">CATALOG</span></span>
                 </div>
             </div>
 
@@ -133,15 +133,15 @@ HTML_TEMPLATE = """
             <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
                     <span class="flex items-center gap-1.5"><span class="text-bnbgold">⏱️</span> Mitigation SLA</span>
-                    <span class="text-emerald-400 font-mono">Sub-45ms</span>
+                    <span class="text-emerald-400 font-mono">SLA Target: &lt; 45ms</span>
                 </div>
                 <div class="mt-3">
                     <div class="text-xs text-slate-400">Measured Mitigation Latency</div>
-                    <div class="text-xl font-mono font-bold text-white mt-0.5">41.28 ms</div>
+                    <div id="ui-mitigation-latency" class="text-xl font-mono font-bold text-white mt-0.5">-- ms</div>
                 </div>
                 <div class="mt-2 text-xs text-slate-400 flex justify-between">
-                    <span>Compute Time: <span class="text-emerald-400 font-mono">0.036 ms</span></span>
-                    <span>SLA: <span class="text-emerald-400 font-mono">&lt; 45ms</span></span>
+                    <span>Compute Time: <span id="ui-compute-time" class="text-emerald-400 font-mono">-- ms</span></span>
+                    <span>SLA Target: <span class="text-emerald-400 font-mono">&lt; 45ms</span></span>
                 </div>
             </div>
         </div>
@@ -163,7 +163,6 @@ HTML_TEMPLATE = """
                         <select onchange="changePool(this.value)" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 font-mono focus:outline-none focus:border-bnbgold">
                             <option value="PancakeSwap_WBNB_USDT" selected>PancakeSwap v3 (WBNB/USDT) - $14.5M</option>
                             <option value="Venus_Protocol_vBNB">Venus Protocol (vBNB Isolated) - $18.2M</option>
-                            <option value="PancakeSwap_CAKE_WBNB">PancakeSwap v2 (CAKE/WBNB) - $8.9M</option>
                         </select>
                     </div>
                 </div>
@@ -173,7 +172,7 @@ HTML_TEMPLATE = """
                     <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
                         <div class="text-xs text-slate-400 font-bold">Protected TVL</div>
                         <div id="tvl-usd" class="text-xl font-mono font-bold text-emerald-400 mt-1">$14,500,000.00</div>
-                        <div class="text-[10px] text-slate-500 mt-1">Live Invariant Baseline</div>
+                        <div class="text-[10px] text-slate-500 mt-1">CATALOG Baseline (referencia estática)</div>
                     </div>
                     <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
                         <div class="text-xs text-slate-400 font-bold">Accounting Invariant Law</div>
@@ -256,12 +255,28 @@ HTML_TEMPLATE = """
                 
                 if (data.block_number) {
                     document.getElementById('bnb-block').innerText = '#' + data.block_number.toLocaleString();
-                    document.getElementById('bnb-gas').innerText = data.gas_utilization_pct + '%';
-                    document.getElementById('bnb-lat').innerText = data.rpc_latency_ms + 'ms';
-                    document.getElementById('bnb-txs').innerText = data.tx_count || '58';
+                    document.getElementById('bnb-gas').innerText = (data.gas_utilization_pct !== undefined && data.gas_utilization_pct !== null) ? data.gas_utilization_pct + '%' : '--%';
+                    document.getElementById('bnb-lat').innerText = data.rpc_latency_ms ? (data.rpc_latency_ms + 'ms') : '--ms';
+                    document.getElementById('bnb-txs').innerText = (data.tx_count !== undefined && data.tx_count !== null) ? data.tx_count : '--';
+                    document.getElementById('bnb-gas-price').innerText = (data.gas_price_gwei !== undefined && data.gas_price_gwei !== null) ? (data.gas_price_gwei + ' Gwei') : (data.base_fee_gwei !== undefined && data.base_fee_gwei !== null ? data.base_fee_gwei + ' Gwei' : '--');
                 }
             } catch (e) {
                 console.error("Telemetry fetch error:", e);
+            }
+        }
+
+        async function loadCatalogTvl() {
+            try {
+                const res = await fetch('/api/pools');
+                const pools = await res.json();
+                const bnbTvl = pools
+                    .filter(p => p.chain === 'BNB Chain')
+                    .reduce((sum, p) => sum + (p.tvl_usd || 0), 0);
+                if (bnbTvl > 0) {
+                    document.getElementById('catalog-total-tvl').innerText = '$' + bnbTvl.toLocaleString('en-US', {minimumFractionDigits: 2});
+                }
+            } catch (e) {
+                console.error("Error loading pools for TVL:", e);
             }
         }
 
@@ -301,7 +316,9 @@ HTML_TEMPLATE = """
 
             document.getElementById('inc-action').innerText = data.action_executed || 'BNB_EMERGENCY_PAUSE';
             document.getElementById('inc-action').className = 'text-rose-400 font-bold';
-            document.getElementById('inc-latency').innerText = data.mitigation_latency_ms + ' ms';
+            document.getElementById('inc-latency').innerText = data.mitigation_latency_ms ? (data.mitigation_latency_ms + ' ms') : '-- ms';
+            document.getElementById('ui-mitigation-latency').innerText = data.mitigation_latency_ms ? (data.mitigation_latency_ms + ' ms') : '-- ms';
+            document.getElementById('ui-compute-time').innerText = data.compute_latency_ms ? (data.compute_latency_ms + ' ms') : (data.mitigation_latency_ms ? data.mitigation_latency_ms + ' ms' : '-- ms');
             document.getElementById('inc-tx').innerText = data.contract_pause_tx_hash ? data.contract_pause_tx_hash : (data.execution_status || 'STANDBY_DRY_RUN (No Fabricated Hash)');
             document.getElementById('inc-tx').className = 'text-emerald-400 font-mono truncate mt-0.5';
         }
@@ -323,12 +340,15 @@ HTML_TEMPLATE = """
             document.getElementById('inc-action').innerText = 'STANDBY';
             document.getElementById('inc-action').className = 'text-slate-300 font-bold';
             document.getElementById('inc-latency').innerText = '-- ms';
+            document.getElementById('ui-mitigation-latency').innerText = '-- ms';
+            document.getElementById('ui-compute-time').innerText = '-- ms';
             document.getElementById('inc-tx').innerText = '--';
             document.getElementById('inc-tx').className = 'text-slate-500 truncate mt-0.5';
         }
 
         // Auto-refresh telemetry every 5 seconds
         updateTelemetry();
+        loadCatalogTvl();
         setInterval(updateTelemetry, 5000);
     </script>
 </body>

@@ -73,6 +73,56 @@ class TestBNBCircuitBreaker(unittest.TestCase):
         self.assertIsNone(breaker_res['contract_pause_tx_hash'])
         self.assertEqual(breaker_res['execution_status'], 'PAUSE_DRY_RUN')
 
+    def test_04_autonomous_onchain_invariant_breach_liquidity(self):
+        """GLM DEFI-R-C6: On-chain liquidity drain >= 20% autonomously trips breaker."""
+        base_pool = self.sensor.sample_monitored_pool('PancakeSwap_WBNB_USDT')
+        attack_pool = dict(base_pool)
+        attack_pool['onchain_liquidity_drain_pct'] = 22.5
+        attack_pool['tvl_usd'] = round(base_pool['tvl_usd'] * (1.0 - 0.225), 2)
+        
+        eval_res = self.engine.evaluate_pool_state(attack_pool, base_pool)
+        self.assertTrue(eval_res['accounting_invariant']['invariant_breached'])
+        self.assertGreaterEqual(eval_res['threat_score'], 0.82)
+        self.assertEqual(eval_res['threat_level'], 'CRITICAL_EXPLOIT')
+        
+        breaker_res = self.breaker.process_telemetry(eval_res)
+        self.assertEqual(breaker_res['action_executed'], 'BNB CHAIN_GLOBAL_EMERGENCY_PAUSE')
+        self.assertEqual(breaker_res['execution_status'], 'PAUSE_DRY_RUN')
+        self.assertIsNone(breaker_res['contract_pause_tx_hash'])
+
+    def test_05_autonomous_onchain_invariant_breach_price(self):
+        """GLM DEFI-R-C6: On-chain price drop >= 15% autonomously trips breaker."""
+        base_pool = self.sensor.sample_monitored_pool('PancakeSwap_WBNB_USDT')
+        attack_pool = dict(base_pool)
+        attack_pool['onchain_price_drop_pct'] = 16.2
+        
+        eval_res = self.engine.evaluate_pool_state(attack_pool, base_pool)
+        self.assertTrue(eval_res['accounting_invariant']['invariant_breached'])
+        self.assertGreaterEqual(eval_res['threat_score'], 0.82)
+        self.assertEqual(eval_res['threat_level'], 'CRITICAL_EXPLOIT')
+        
+        breaker_res = self.breaker.process_telemetry(eval_res)
+        self.assertEqual(breaker_res['action_executed'], 'BNB CHAIN_GLOBAL_EMERGENCY_PAUSE')
+
+    def test_06_catalog_metadata_and_token_ordering(self):
+        """GLM DEFI-R-DATA: PancakeSwap token ordering adheres to sorted on-chain addresses."""
+        pancake = self.sensor.pools_directory['BNB']['PancakeSwap_WBNB_USDT']
+        self.assertEqual(pancake['token0'], 'USDT')
+        self.assertEqual(pancake['token1'], 'WBNB')
+        self.assertTrue(pancake['token0_address'].lower() < pancake['token1_address'].lower())
+
+    def test_07_real_block_telemetry_fields(self):
+        """GLM DEFI-R-UI4: Real block metrics query without static fallbacks."""
+        summary = self.sensor.get_bnb_latest_block_summary()
+        self.assertIn('block_number', summary)
+        self.assertIn('tx_count', summary)
+        self.assertIn('gas_utilization_pct', summary)
+        self.assertIn('gas_price_gwei', summary)
+        if summary.get('status') == 'online':
+            self.assertIsInstance(summary['block_number'], int)
+            self.assertIsInstance(summary['tx_count'], int)
+            self.assertIsInstance(summary['gas_utilization_pct'], float)
+
 
 if __name__ == '__main__':
     unittest.main()

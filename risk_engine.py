@@ -33,6 +33,11 @@ class RiskEngine:
         # 1. Delta Reserve / TVL calculation
         tvl_delta_pct = (prev_tvl - curr_tvl) / prev_tvl if prev_tvl > 0 else 0.0
 
+        # Live On-Chain Delta Metrics (GLM DEFI-R-C6)
+        onchain_liq_drain_pct = current_pool.get("onchain_liquidity_drain_pct", 0.0)
+        onchain_price_drop_pct = current_pool.get("onchain_price_drop_pct", 0.0)
+        effective_drain_pct = max(tvl_delta_pct, onchain_liq_drain_pct / 100.0)
+
         # Contextual metrics from transaction / mempool
         tx_context = tx_context or {}
         flash_loan_amount = tx_context.get("flash_loan_borrow_usd", 0.0)
@@ -62,8 +67,10 @@ class RiskEngine:
 
         elif "AMM" in protocol_type or "VAULT" in protocol_type:
             invariant_type = "CONSTANT_PRODUCT_AMM_INVARIANT"
-            # AMM Invariant: Reserve drain co-occurrence with extreme slippage and flash loan
-            if tvl_delta_pct >= self.reserve_drop_threshold:
+            # Live On-Chain Invariant Breach (GLM DEFI-R-C6: liq drain >= 20% or price drop >= 15%)
+            if onchain_liq_drain_pct >= 20.0 or onchain_price_drop_pct >= 15.0:
+                invariant_breached = True
+            elif tvl_delta_pct >= self.reserve_drop_threshold:
                 if flash_loan_amount > 0 and slippage_pct > 3.0:
                     invariant_breached = True
 
@@ -71,11 +78,11 @@ class RiskEngine:
         risk_components = {}
 
         # Factor 1: Liquidity Drain Velocity (Weight: 0.40)
-        if tvl_delta_pct > 0:
+        if effective_drain_pct > 0:
             if is_healthy_liquidation:
                 drain_score = 0.05
             else:
-                drain_score = min(1.0, (tvl_delta_pct / self.reserve_drop_threshold)) * 0.40
+                drain_score = min(1.0, (effective_drain_pct / self.reserve_drop_threshold)) * 0.40
         else:
             drain_score = 0.0
         risk_components["liquidity_drain_score"] = round(drain_score, 4)
@@ -89,7 +96,8 @@ class RiskEngine:
         risk_components["flash_loan_risk"] = round(flash_score, 4)
 
         # Factor 3: Slippage / Oracle Deviation (Weight: 0.15)
-        slippage_score = min(1.0, max(0.0, (slippage_pct - 0.5) / 5.0)) * 0.15
+        effective_slippage = max(slippage_pct, onchain_price_drop_pct)
+        slippage_score = min(1.0, max(0.0, (effective_slippage - 0.5) / 5.0)) * 0.15
         risk_components["slippage_anomaly"] = round(slippage_score, 4)
 
         # Factor 4: Gas War / MEV Bidding / L2 Sequencer Delay (Weight: 0.10)
@@ -100,9 +108,14 @@ class RiskEngine:
             gas_score += 0.03  # Flag toxic L2 sequencer sandwich attempts
         risk_components["mempool_frontrun_risk"] = round(gas_score, 4)
 
-        # Factor 5: Deterministic Invariant Breach (Weight: 0.35)
+        # Factor 5: Deterministic Invariant Breach (Weight: 0.35 + onchain breach guarantee)
         if invariant_breached:
             risk_components["accounting_invariant_breach"] = 0.35
+            # If confirmed live on-chain drain >= 20% or price crash >= 15%, guarantee circuit breaker trip (>= 0.82)
+            if onchain_liq_drain_pct >= 20.0 or onchain_price_drop_pct >= 15.0:
+                needed_boost = max(0.0, 0.85 - sum(risk_components.values()))
+                if needed_boost > 0:
+                    risk_components["onchain_invariant_breach_boost"] = round(needed_boost, 4)
         else:
             risk_components["accounting_invariant_breach"] = 0.0
 

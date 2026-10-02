@@ -111,10 +111,11 @@ When the Circuit Breaker trips, an immutable incident report is generated:
   "pool_name": "PancakeSwap_WBNB_USDT",
   "threat_score": 1.0,
   "threat_level": "CRITICAL_EXPLOIT",
-  "mitigation_latency_ms": 45.37,
-  "action_executed": "EMERGENCY_VAULT_PAUSE_DISPATCHED",
-  "contract_pause_tx_hash": "0x828ed9c9c9f51524e92fa35c44430ed1a6875b9f6b634ac23c21142dd28c17ce",
-  "protected_tvl_usd": 7500000.0
+  "mitigation_latency_ms": 0.012,
+  "action_executed": "BNB CHAIN_GLOBAL_EMERGENCY_PAUSE",
+  "execution_status": "PAUSE_DRY_RUN",
+  "contract_pause_tx_hash": null,
+  "protected_tvl_usd": 7800000.0
 }
 ```
 
