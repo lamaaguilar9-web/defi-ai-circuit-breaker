@@ -17,7 +17,7 @@
 ---
 
 > [!IMPORTANT]
-> **Audit Scope & Certification Notice:** Formal GLM-5.3 audit certification covers the canonical smart contracts located in the `bnb-invariant-shield` repository (`BNBInvariantShield.sol`). This repository implements the Python autonomous telemetry, risk evaluation, and emergency dispatch agent layer.
+> **Architecture & Scope Notice:** The canonical Solidity smart contracts are located in the `bnb-invariant-shield` repository (`BNBInvariantShield.sol`). This repository implements the Python autonomous telemetry, risk evaluation, and emergency dispatch agent layer.
 
 ---
 

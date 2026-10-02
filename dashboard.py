@@ -293,12 +293,16 @@ HTML_TEMPLATE = """
             }
         }
 
-        const LOCAL_AUTH_TOKEN = "sentinel-local-auth";
+        const AUTH_TOKEN = "{{SENTINEL_ADMIN_KEY_INJECTED}}";
 
         async function triggerSimulation(scenario) {
+            const headers = {};
+            if (AUTH_TOKEN) {
+                headers['X-Sentinel-Auth'] = AUTH_TOKEN;
+            }
             const res = await fetch('/api/simulate/' + scenario, {
                 method: 'POST',
-                headers: { 'X-Sentinel-Auth': LOCAL_AUTH_TOKEN }
+                headers: headers
             });
             const data = await res.json();
 
@@ -324,9 +328,13 @@ HTML_TEMPLATE = """
         }
 
         async function resetSystem() {
+            const headers = {};
+            if (AUTH_TOKEN) {
+                headers['X-Sentinel-Auth'] = AUTH_TOKEN;
+            }
             await fetch('/api/reset', {
                 method: 'POST',
-                headers: { 'X-Sentinel-Auth': LOCAL_AUTH_TOKEN }
+                headers: headers
             });
             document.getElementById('threat-pct').innerText = '0.0%';
             document.getElementById('threat-pct').className = 'text-5xl font-mono font-black text-emerald-400 transition-all';
@@ -355,14 +363,15 @@ HTML_TEMPLATE = """
 </html>
 """
 
-ADMIN_AUTH_TOKEN = os.environ.get("SENTINEL_ADMIN_KEY", "sentinel-local-auth")
+ADMIN_AUTH_TOKEN = os.environ.get("SENTINEL_ADMIN_KEY")
 
 # Start autonomous continuous sensor daemon on launch (GLM DEFI-C6)
 sensor.start_monitoring_daemon(engine, breaker)
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return HTMLResponse(content=HTML_TEMPLATE)
+    rendered = HTML_TEMPLATE.replace("{{SENTINEL_ADMIN_KEY_INJECTED}}", ADMIN_AUTH_TOKEN or "")
+    return HTMLResponse(content=rendered)
 
 @app.get("/api/telemetry")
 def get_telemetry():
@@ -378,10 +387,12 @@ def get_pool_details(pool_name: str):
 
 @app.post("/api/simulate/{scenario}")
 def simulate_attack(scenario: str, request: Request):
-    auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
-    client_host = request.client.host if request.client else ""
-    if client_host not in ("127.0.0.1", "localhost", "::1") and auth_header != ADMIN_AUTH_TOKEN:
-        return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Simulation controls restricted to authorized operator"})
+    if ADMIN_AUTH_TOKEN:
+        auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            auth_header = auth_header[7:].strip()
+        if auth_header != ADMIN_AUTH_TOKEN:
+            return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Simulation controls restricted to authorized operator"})
     res = simulate_multi_chain_attack(scenario)
     global last_incident
     last_incident = res
@@ -389,10 +400,12 @@ def simulate_attack(scenario: str, request: Request):
 
 @app.post("/api/reset")
 def reset_breaker(request: Request):
-    auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
-    client_host = request.client.host if request.client else ""
-    if client_host not in ("127.0.0.1", "localhost", "::1") and auth_header != ADMIN_AUTH_TOKEN:
-        return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Reset controls restricted to authorized operator"})
+    if ADMIN_AUTH_TOKEN:
+        auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            auth_header = auth_header[7:].strip()
+        if auth_header != ADMIN_AUTH_TOKEN:
+            return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Reset controls restricted to authorized operator"})
     global breaker, last_incident
     breaker.reset()
     last_incident = None
