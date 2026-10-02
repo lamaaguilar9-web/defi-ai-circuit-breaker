@@ -278,8 +278,13 @@ HTML_TEMPLATE = """
             }
         }
 
+        const LOCAL_AUTH_TOKEN = "sentinel-local-auth";
+
         async function triggerSimulation(scenario) {
-            const res = await fetch('/api/simulate/' + scenario, { method: 'POST' });
+            const res = await fetch('/api/simulate/' + scenario, {
+                method: 'POST',
+                headers: { 'X-Sentinel-Auth': LOCAL_AUTH_TOKEN }
+            });
             const data = await res.json();
 
             // Update UI with attack results
@@ -297,12 +302,15 @@ HTML_TEMPLATE = """
             document.getElementById('inc-action').innerText = data.action_executed || 'BNB_EMERGENCY_PAUSE';
             document.getElementById('inc-action').className = 'text-rose-400 font-bold';
             document.getElementById('inc-latency').innerText = data.mitigation_latency_ms + ' ms';
-            document.getElementById('inc-tx').innerText = data.contract_pause_tx_hash;
+            document.getElementById('inc-tx').innerText = data.contract_pause_tx_hash ? data.contract_pause_tx_hash : (data.execution_status || 'STANDBY_DRY_RUN (No Fabricated Hash)');
             document.getElementById('inc-tx').className = 'text-emerald-400 font-mono truncate mt-0.5';
         }
 
         async function resetSystem() {
-            await fetch('/api/reset', { method: 'POST' });
+            await fetch('/api/reset', {
+                method: 'POST',
+                headers: { 'X-Sentinel-Auth': LOCAL_AUTH_TOKEN }
+            });
             document.getElementById('threat-pct').innerText = '0.0%';
             document.getElementById('threat-pct').className = 'text-5xl font-mono font-black text-emerald-400 transition-all';
             document.getElementById('threat-level').innerText = 'NORMAL_SECURE';
@@ -327,6 +335,11 @@ HTML_TEMPLATE = """
 </html>
 """
 
+ADMIN_AUTH_TOKEN = os.environ.get("SENTINEL_ADMIN_KEY", "sentinel-local-auth")
+
+# Start autonomous continuous sensor daemon on launch (GLM DEFI-C6)
+sensor.start_monitoring_daemon(engine, breaker)
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return HTMLResponse(content=HTML_TEMPLATE)
@@ -337,38 +350,33 @@ def get_telemetry():
 
 @app.get("/api/pools")
 def get_pools():
-    return [
-        {"pool_name": "PancakeSwap_WBNB_USDT", "chain": "BNB Chain", "protocol": "PancakeSwap v3", "protocol_type": "AMM_V3", "tvl_usd": 14500000.0},
-        {"pool_name": "Venus_Protocol_vBNB", "chain": "BNB Chain", "protocol": "Venus Protocol", "protocol_type": "LENDING_ISOLATED", "tvl_usd": 18200000.0},
-        {"pool_name": "PancakeSwap_CAKE_WBNB", "chain": "BNB Chain", "protocol": "PancakeSwap v2", "protocol_type": "AMM_CONSTANT_PRODUCT", "tvl_usd": 8900000.0}
-    ]
+    return sensor.list_available_pools()
 
 @app.get("/api/pool/{pool_name}")
 def get_pool_details(pool_name: str):
-    pool = sensor.sample_monitored_pool(pool_name)
-    if not pool:
-        pool = {
-            "pool_name": pool_name,
-            "chain": "BNB Chain",
-            "protocol": "PancakeSwap",
-            "protocol_type": "AMM_CONSTANT_PRODUCT",
-            "tvl_usd": 8900000.0
-        }
-    return pool
+    return sensor.sample_monitored_pool(pool_name)
 
 @app.post("/api/simulate/{scenario}")
-def simulate_attack(scenario: str):
+def simulate_attack(scenario: str, request: Request):
+    auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
+    client_host = request.client.host if request.client else ""
+    if client_host not in ("127.0.0.1", "localhost", "::1") and auth_header != ADMIN_AUTH_TOKEN:
+        return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Simulation controls restricted to authorized operator"})
     res = simulate_multi_chain_attack(scenario)
     global last_incident
     last_incident = res
-    return res
+    return JSONResponse(content=res)
 
 @app.post("/api/reset")
-def reset_breaker():
+def reset_breaker(request: Request):
+    auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
+    client_host = request.client.host if request.client else ""
+    if client_host not in ("127.0.0.1", "localhost", "::1") and auth_header != ADMIN_AUTH_TOKEN:
+        return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Reset controls restricted to authorized operator"})
     global breaker, last_incident
     breaker.reset()
     last_incident = None
-    return {"status": "success", "message": "BNB Chain Circuit Breaker reset to ARMED_MONITORING"}
+    return JSONResponse(content={"status": "success", "message": "BNB Chain Circuit Breaker reset to ARMED_MONITORING"})
 
 @app.get("/api/status")
 def get_status():

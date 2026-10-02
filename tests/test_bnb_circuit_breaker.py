@@ -1,7 +1,15 @@
 import unittest
+import sys, os
+
+# Ensure project root is in sys.path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from telemetry_sensor import TelemetrySensor
 from risk_engine import RiskEngine
 from circuit_breaker import CircuitBreaker
+
 
 class TestBNBCircuitBreaker(unittest.TestCase):
     def setUp(self):
@@ -27,6 +35,8 @@ class TestBNBCircuitBreaker(unittest.TestCase):
         
         breaker_res = self.breaker.process_telemetry(eval_res)
         self.assertEqual(breaker_res['action_executed'], 'BNB CHAIN_GLOBAL_EMERGENCY_PAUSE')
+        self.assertEqual(breaker_res['execution_status'], 'PAUSE_DRY_RUN')
+        self.assertIsNone(breaker_res['contract_pause_tx_hash'])
         self.assertLess(breaker_res['mitigation_latency_ms'], 45.0)
 
     def test_02_venus_protocol_oracle_drain(self):
@@ -46,7 +56,9 @@ class TestBNBCircuitBreaker(unittest.TestCase):
         self.assertIn(eval_res['threat_level'], ['CRITICAL_EXPLOIT', 'HIGH_VOLATILITY'])
         
         breaker_res = self.breaker.process_telemetry(eval_res)
-        self.assertIsNotNone(breaker_res['contract_pause_tx_hash'])
+        # GLM DEFI-C4: In dry-run mode without key, assert tx_hash is None and status is PAUSE_DRY_RUN
+        self.assertIsNone(breaker_res['contract_pause_tx_hash'])
+        self.assertEqual(breaker_res['execution_status'], 'PAUSE_DRY_RUN')
         self.assertLess(breaker_res['mitigation_latency_ms'], 45.0)
 
     def test_03_sub_45ms_mitigation_sla(self):
@@ -58,6 +70,9 @@ class TestBNBCircuitBreaker(unittest.TestCase):
         eval_res = self.engine.evaluate_pool_state(attack_pool, base_pool, tx_context)
         breaker_res = self.breaker.process_telemetry(eval_res)
         self.assertLessEqual(breaker_res['mitigation_latency_ms'], 45.0)
+        self.assertIsNone(breaker_res['contract_pause_tx_hash'])
+        self.assertEqual(breaker_res['execution_status'], 'PAUSE_DRY_RUN')
+
 
 if __name__ == '__main__':
     unittest.main()

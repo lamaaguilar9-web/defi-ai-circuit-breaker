@@ -16,22 +16,27 @@
 
 ---
 
+> [!IMPORTANT]
+> **Audit Scope & Certification Notice:** Formal GLM-5.3 audit certification covers the canonical smart contracts located in the `bnb-invariant-shield` repository (`BNBInvariantShield.sol`). This repository implements the Python autonomous telemetry, risk evaluation, and emergency dispatch agent layer.
+
+---
+
 ## 🚀 Overview
 
 In decentralized finance, flash loans and oracle manipulation attacks drain tens of millions of dollars in a single transaction block. Traditional security solutions rely on multi-signature councils or governance time-locks that take hours or days to respond — far too late to preserve user capital.
 
 **DeFi AI Circuit Breaker** introduces the Wall Street "Circuit Breaker" mechanism natively to **BNB Chain (BEP-20)**. It is an autonomous on-chain Guardian Agent that continuously ingests block-level telemetry directly from public BSC JSON-RPC endpoints (`bsc-dataseed.binance.org`).
 
-When an anomalous flash-loan borrowing pattern or abnormal liquidity drain is detected, the Guardian triggers an emergency smart contract pause and mitigation dispatch in **under 45 milliseconds**, halting the attack before secondary arbitrage and liquidation transactions can finalize.
+When an anomalous flash-loan borrowing pattern or abnormal liquidity drain is detected, the Guardian triggers an emergency smart contract pause and mitigation dispatch with an architectural SLA target of **under 45 milliseconds**, halting the attack before secondary arbitrage and liquidation transactions can finalize.
 
 ---
 
 ## ⚡ Key Highlights & Innovation
 
-- **Sub-45ms Autonomous Response**: Evaluates threat signatures and executes emergency mitigations in `< 45ms` (measured compute latency: `0.036ms`, mitigation dispatch: `41.28ms`).
+- **Sub-45ms Response SLA Target**: Engineered with an architectural SLA target of `< 45ms` (internal Python compute cycle: `< 0.05ms`).
 - **BNB Chain Invariant Engine**: Supports Constant Product AMMs ($\Delta x \cdot \Delta y \ge k$ PancakeSwap v3) and Lending Conservation ($\Delta \text{Debt}/\Delta \text{Collateral} \ge 0.65$ Venus Protocol), distinguishing healthy liquidations from unbacked drains.
-- **Dedicated Real-Time BSC Telemetry**: Direct block-by-block monitoring of BNB Chain Mainnet block numbers, gas utilization, and transaction velocity.
-- **Granular vs Global Mitigation**: Dispatches fine-grained asset halts or global emergency pauses (`BNB CHAIN_GLOBAL_EMERGENCY_PAUSE`) with cryptographic audit hashes.
+- **Dedicated Real-Time BSC Telemetry**: Direct block-by-block monitoring of BNB Chain Mainnet block numbers, gas utilization, and live PancakeSwap v3 on-chain `slot0()` calls.
+- **Granular vs Global Mitigation**: Dispatches fine-grained asset halts or global emergency pauses (`BNB CHAIN_GLOBAL_EMERGENCY_PAUSE`) with verifiable audit incident logs (zero fabricated hashes).
 - **Zero Operating Cost**: Built entirely on top of free public BSC JSON-RPC nodes (`bsc-dataseed.binance.org`). No paid API subscriptions required.
 - **Interactive Stress-Test Terminal**: Built-in visual dashboard (FastAPI + Tailwind) allowing protocols and auditors to replay simulated flash-loan exploits and verify mitigation response in real time.
 
@@ -46,25 +51,25 @@ When an anomalous flash-loan borrowing pattern or abnormal liquidity drain is de
            │ (Real-time telemetry streaming)
            ▼
 [ telemetry_sensor.py ]
-   Extracts block deltas, gas utilization spikes, and pool reserve baselines.
+   Extracts live on-chain slot0/liquidity deltas, block heights, and pool baselines.
 
            │
            ▼
 [ risk_engine.py ]
    Calculates Threat Score [0.0 - 1.0]:
-   ├── Factor 1: Liquidity Drain Velocity (Max 45%)
-   ├── Factor 2: Flash Loan Borrow Co-occurrence (Max 30%)
-   ├── Factor 3: Slippage / Oracle Distortion (Max 15%)
-   ├── Factor 4: Mempool Priority Gas Surge (Max 10%)
-   └── Factor 5: Balance-Sheet Invariant Violation (Delta Debt / Delta Collateral < 0.08)
+   ├── Factor 1: Liquidity Drain Velocity (Max 40% - Weight 0.40)
+   ├── Factor 2: Flash Loan Borrow Co-occurrence (Max 25% - Weight 0.25)
+   ├── Factor 3: Slippage / Oracle Distortion (Max 15% - Weight 0.15)
+   ├── Factor 4: Mempool Priority Gas Surge (Max 10% - Weight 0.10)
+   └── Factor 5: Balance-Sheet Invariant Violation (Max 35% - Weight 0.35)
 
            │ (Threat Score >= 0.82 & Invariant Breached)
            ▼
 [ circuit_breaker.py ]
-   Autonomous Sub-45ms Emergency Halt & Mitigation:
+   Autonomous Mitigation Dispatcher:
    ├── Granular Asset Pause vs Global Halt
-   ├── Generates Cryptographic Emergency Pause Hash
-   ├── Halts Monitored Protocol Vault
+   ├── Honest PAUSE_DRY_RUN Mode (Zero fabricated hashes)
+   ├── Enforces non-custodial invariant defense
    └── Dispatches Incident Audit Logs
 ```
 
