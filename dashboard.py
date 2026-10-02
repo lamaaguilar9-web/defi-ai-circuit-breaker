@@ -7,6 +7,7 @@ Exclusively engineered for BNB Chain Builder Grants & Binance Agentic AI Challen
 
 import os
 import time
+import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 import uvicorn
@@ -16,6 +17,18 @@ from risk_engine import RiskEngine
 from circuit_breaker import CircuitBreaker
 from simulate_exploit import simulate_multi_chain_attack
 from radar_engine import RadarModoSombra
+
+# Ensure dual logging to both journal and /var/log/defi_circuit_breaker.log if permitted
+try:
+    _log_path = "/var/log/defi_circuit_breaker.log"
+    if os.path.exists(os.path.dirname(_log_path)) and os.access(os.path.dirname(_log_path), os.W_OK):
+        _fh = logging.FileHandler(_log_path, encoding="utf-8")
+        _fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+        logging.getLogger().addHandler(_fh)
+        logging.getLogger("RadarModoSombra").addHandler(_fh)
+        logging.getLogger("TelemetrySensor").addHandler(_fh)
+except Exception:
+    pass
 
 app = FastAPI(title="DeFi AI Circuit Breaker - BNB Chain Guardian")
 
