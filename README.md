@@ -123,15 +123,15 @@ When the Circuit Breaker trips, an immutable incident report is generated:
 
 ## 🛰️ Radar "Modo Sombra" v1 (Passive Surveillance Engine)
 
-Passive, zero-privilege watcher monitoring public liquidity pools across BNB Chain, Ethereum, and Arbitrum:
+Passive, zero-privilege watcher monitoring public liquidity pools:
 
 - **Strict Read-Only Mode (`SOLO_LECTURA`)**: Zero on-chain actions, zero private key requirements, zero external permissions.
-- **Instant Telegram Alerts**: Dispatched when `drain >= 20%` or `price_drop >= 15%`, detailing chain, pool, breach metrics, before/after TVL & price, on-chain block height, and timestamp.
-- **Dynamic Config Catalog**: Monitored pools defined in `config/radar_pools.json` without modifying agent source code.
-- **Deterministic Anti-Spam**: 15-minute cooldown per pool (`COOLDOWN_SECONDS = 900`) and a strict 20 alert daily quota (`MAX_DAILY_ALERTS = 20`).
+- **Honest Sampling Scope (v1)**: Active real-time surveillance evaluates **PancakeSwap v3 WBNB/USDT** (`0x3669...`) on BSC Mainnet via live on-chain `eth_call` (`slot0`/`liquidity`). The remaining 3 pools (`Uniswap_v3_WETH_USDC`, `Camelot_v3_WETH_USDC`, `Venus_Protocol_vBNB`) are catalog-staged in `config/radar_pools.json` awaiting multi-chain RPC telemetry adapters.
+- **Deterministic Telegram Alerts**: Dispatched when `drain >= 20%` or `price_drop >= 15%`, detailing chain, pool address, measured drain%, price drop, estimated catalog TVL baseline, on-chain block height, and timestamp.
+- **Persistent Anti-Spam**: 15-minute cooldown per pool (`COOLDOWN_SECONDS = 900`) and a strict 20 alert daily quota (`MAX_DAILY_ALERTS = 20`), both restored automatically from the incident ledger upon service restarts.
 - **Append-Only Evidence Ledger**: All detections logged to `data/radar_incidents.jsonl` (git-ignored) providing timestamped proof-of-detection for institutional prospects.
 - **REST Endpoints & Verification**:
-  - `GET /api/radar/status`: Real-time runtime health, catalog size, and quota counters.
+  - `GET /api/radar/status`: Reports `pools_active_watching` (1) vs `pools_catalog` (4), runtime status, and quota counters.
   - `GET /api/radar/incidents`: Historical breach audit feed.
   - `POST /api/radar/test-alert`: Protected test alert pathway labeled `[TEST] [RADAR solo lectura]` with full journal and Telegram verification.
 

@@ -52,16 +52,17 @@ class RadarModoSombra:
         # Ensure storage directory exists
         os.makedirs(os.path.dirname(self.incidents_path), exist_ok=True)
 
-        # Restore daily counts from persistent log
-        self._init_daily_count_from_log()
+        # Restore daily counts and cooldowns from persistent log (GLM R-3)
+        self._init_state_from_log()
         self.load_catalog()
 
-    def _init_daily_count_from_log(self):
-        """Restores daily alert quota from data/radar_incidents.jsonl to maintain persistence across service restarts."""
+    def _init_state_from_log(self):
+        """Restores daily alert quota and pool cooldowns from data/radar_incidents.jsonl across restarts (GLM R-3)."""
         if not os.path.exists(self.incidents_path):
             return
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         count = 0
+        restored_cooldowns: Dict[str, float] = {}
         try:
             with open(self.incidents_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -71,15 +72,22 @@ class RadarModoSombra:
                     try:
                         entry = json.loads(line)
                         iso = entry.get("iso_time", "")
-                        if iso.startswith(today_str) and not entry.get("is_test", False):
-                            count += 1
+                        pool = entry.get("pool_name")
+                        ts = entry.get("timestamp", 0.0)
+                        if not entry.get("is_test", False):
+                            if iso.startswith(today_str):
+                                count += 1
+                            if pool and ts:
+                                if pool not in restored_cooldowns or ts > restored_cooldowns[pool]:
+                                    restored_cooldowns[pool] = ts
                     except Exception:
                         continue
             with self._lock:
                 self.daily_counts[today_str] = count
-            logger.info(f"[RADAR solo lectura] Restored {count} active alerts for today ({today_str}) from incident log.")
+                self.cooldowns.update(restored_cooldowns)
+            logger.info(f"[RADAR solo lectura] Restored {count} active alerts for today ({today_str}) and {len(restored_cooldowns)} pool cooldowns from incident log.")
         except Exception as e:
-            logger.warning(f"[RADAR solo lectura] Could not restore daily count: {e}")
+            logger.warning(f"[RADAR solo lectura] Could not restore state from log: {e}")
 
     def load_catalog(self) -> List[Dict[str, Any]]:
         """Loads pool catalog from config/radar_pools.json without modifying code."""
@@ -237,17 +245,17 @@ class RadarModoSombra:
 
         # 3. Format Telegram Alert
         reasons_desc = " | ".join(breach_reasons)
-        block_desc = f"#{block_number}" if block_number else "N/A"
+        block_desc = f"#{block_number}" if block_number else "Desconocido (RPC caído)"
         msg = (
             f"🛡️ <b>[RADAR solo lectura] INVARIANT BREACH DETECTED</b>\n\n"
             f"• <b>Cadena:</b> {chain}\n"
             f"• <b>Pool:</b> {pool_name} (<code>{address}</code>)\n"
             f"• <b>Protocolo:</b> {protocol}\n"
             f"• <b>Infracción:</b> {reasons_desc}\n"
-            f"• <b>Drain Calculado:</b> {effective_drain_pct:.2f}% (Umbral: ≥{DRAIN_THRESHOLD_PCT}%)\n"
+            f"• <b>Drain Real Medido:</b> {effective_drain_pct:.2f}% (Umbral: ≥{DRAIN_THRESHOLD_PCT}%)\n"
             f"• <b>Caída de Precio:</b> {effective_price_drop_pct:.2f}% (Umbral: ≥{PRICE_DROP_THRESHOLD_PCT}%)\n"
-            f"• <b>Valores Antes:</b> TVL ${prev_tvl:,.2f} | Precio ${price_before:,.2f}\n"
-            f"• <b>Valores Después:</b> TVL ${curr_tvl:,.2f} | Precio ${price_after:,.2f}\n"
+            f"• <b>Precio Antes/Después:</b> ${price_before:,.2f} ➔ ${price_after:,.2f}\n"
+            f"• <b>TVL Estimado (Catálogo):</b> ${prev_tvl:,.2f} ➔ ${curr_tvl:,.2f}\n"
             f"• <b>Bloque On-Chain:</b> {block_desc}\n"
             f"• <b>Timestamp:</b> {iso_str}\n"
             f"• <b>Amenaza:</b> {threat_level} (Score: {threat_score * 100:.1f}%)\n"
@@ -278,8 +286,8 @@ class RadarModoSombra:
             "breach_reasons": breach_reasons,
             "drain_pct": effective_drain_pct,
             "price_drop_pct": effective_price_drop_pct,
-            "tvl_before_usd": prev_tvl,
-            "tvl_after_usd": curr_tvl,
+            "tvl_before_usd_catalog_estimate": prev_tvl,
+            "tvl_after_usd_catalog_estimate": curr_tvl,
             "price_before_usd": price_before,
             "price_after_usd": price_after,
             "block_number": block_number,
@@ -313,7 +321,7 @@ class RadarModoSombra:
         iso_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         current_count = self.daily_counts.get(today_str, 0)
-        block_desc = f"#{block_number}" if block_number else "#42718900"
+        block_desc = f"#{block_number}" if block_number else "Desconocido (RPC caído)"
 
         msg = (
             f"🛡️ <b>[RADAR solo lectura] [TEST] Verificación de Ruta de Alerta</b>\n\n"
@@ -345,7 +353,7 @@ class RadarModoSombra:
             "protocol": pool.get("protocol", "PancakeSwap v3"),
             "address": pool.get("address", "0x36696169C63e42cd08ce11f5deeBbCeBae652050"),
             "breach_reasons": ["TEST_ALERT_VERIFICATION"],
-            "block_number": block_number or 42718900,
+            "block_number": block_number,
             "telegram_notified": sent_tg,
             "status": "VERIFIED_TEST"
         }
@@ -355,7 +363,7 @@ class RadarModoSombra:
             "status": "TEST_ALERT_DISPATCHED",
             "radar_mode": "SOLO_LECTURA",
             "pool_name": pool_name,
-            "block_number": block_number or 42718900,
+            "block_number": block_number,
             "telegram_notified": sent_tg,
             "incident": incident_entry
         }
@@ -369,14 +377,22 @@ class RadarModoSombra:
             logger.error(f"[RADAR solo lectura] Failed to append incident to {self.incidents_path}: {e}")
 
     def get_status(self) -> Dict[str, Any]:
-        """Returns runtime status of the Radar Modo Sombra daemon."""
+        """Returns runtime status of the Radar Modo Sombra daemon with honest telemetry claims (GLM R-1)."""
         token, chat_id = self._get_telegram_creds()
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        catalog_pools = self.get_catalog_pools()
+        active_watching = [p.get("pool_name") for p in catalog_pools if p.get("pool_name") == "PancakeSwap_WBNB_USDT"]
+        catalog_names = [p.get("pool_name") for p in catalog_pools]
+
         return {
             "radar_mode": "SOLO_LECTURA",
             "status": "ARMED_AND_WATCHING",
-            "pools_catalog_count": len(self.get_catalog_pools()),
-            "pools_monitored": [p.get("pool_name") for p in self.get_catalog_pools()],
+            "version": "v1.0-shadow",
+            "pools_active_watching_count": len(active_watching),
+            "pools_active_watching": active_watching,
+            "pools_catalog_count": len(catalog_pools),
+            "pools_catalog": catalog_names,
+            "sampling_scope": "v1 actively streams live on-chain BSC eth_call (slot0/liquidity) for PancakeSwap_WBNB_USDT; remaining catalog pools staged for multi-chain adapters",
             "telegram_configured": bool(token and chat_id),
             "alerts_sent_today": self.daily_counts.get(today_str, 0),
             "max_daily_alerts": self.max_daily_alerts,

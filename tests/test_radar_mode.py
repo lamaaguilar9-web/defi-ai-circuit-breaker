@@ -297,11 +297,18 @@ class TestRadarModoSombra(unittest.TestCase):
             self.assertEqual(last_entry["breach_reasons"], ["TEST_ALERT_VERIFICATION"])
 
     def test_09_zero_onchain_actions_solo_lectura(self):
-        """AR-4: Radar operates strictly in read-only mode with zero transaction keys."""
+        """AR-4, GLM R-1: Radar operates in read-only mode and honestly reports active vs catalog pools."""
         status = self.radar.get_status()
         self.assertEqual(status["radar_mode"], "SOLO_LECTURA")
         self.assertEqual(status["drain_threshold_pct"], 20.0)
         self.assertEqual(status["price_drop_threshold_pct"], 15.0)
+
+        # GLM R-1 Honest Scope separation
+        self.assertEqual(status["pools_active_watching_count"], 1)
+        self.assertEqual(status["pools_active_watching"], ["PancakeSwap_WBNB_USDT"])
+        self.assertEqual(status["pools_catalog_count"], 2)
+        self.assertEqual(status["pools_catalog"], ["PancakeSwap_WBNB_USDT", "Uniswap_v3_WETH_USDC"])
+        self.assertIn("v1 actively streams live on-chain BSC eth_call", status["sampling_scope"])
 
         # Confirm no private key attributes exist anywhere on RadarModoSombra
         self.assertFalse(hasattr(self.radar, "private_key"))
@@ -320,6 +327,8 @@ class TestRadarModoSombra(unittest.TestCase):
         status_data = resp.json()
         self.assertEqual(status_data["radar_mode"], "SOLO_LECTURA")
         self.assertEqual(status_data["status"], "ARMED_AND_WATCHING")
+        self.assertEqual(status_data["pools_active_watching_count"], 1)
+        self.assertEqual(status_data["pools_active_watching"], ["PancakeSwap_WBNB_USDT"])
 
         # GET /api/radar/incidents
         resp = client.get("/api/radar/incidents")
@@ -337,6 +346,60 @@ class TestRadarModoSombra(unittest.TestCase):
             resp = client.post("/api/radar/test-alert")
             self.assertEqual(resp.status_code, 200)
             self.assertEqual(resp.json()["status"], "TEST_ALERT_DISPATCHED")
+
+    @patch("radar_engine.requests.post")
+    def test_11_cooldown_persistence_across_restarts(self, mock_post):
+        """GLM R-3: Pool cooldowns persist across engine re-instantiations via incident log."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_post.return_value = mock_resp
+
+        with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "mock_token", "TELEGRAM_CHAT_ID": "123456"}):
+            base_pool = {"tvl_usd": 10000000.0}
+            breach_pool = {
+                "pool_name": "PancakeSwap_WBNB_USDT",
+                "chain": "BNB Chain",
+                "tvl_usd": 7000000.0,
+                "onchain_liquidity_drain_pct": 30.0
+            }
+
+            # Fire initial alert
+            res1 = self.radar.evaluate_and_alert(breach_pool, base_pool, block_number=42718900)
+            self.assertEqual(res1["status"], "DISPATCHED")
+
+            # Simulate complete daemon restart by creating a new RadarModoSombra instance pointing to same file
+            restarted_radar = RadarModoSombra(
+                config_path=self.config_path,
+                incidents_path=self.incidents_path,
+                cooldown_seconds=900,
+                max_daily_alerts=20
+            )
+
+            # Confirm cooldown was restored from disk log
+            self.assertIn("PancakeSwap_WBNB_USDT", restarted_radar.cooldowns)
+            self.assertGreater(restarted_radar.cooldowns["PancakeSwap_WBNB_USDT"], 0)
+
+            # Immediate second breach must be suppressed by restored cooldown
+            res2 = restarted_radar.evaluate_and_alert(breach_pool, base_pool, block_number=42718901)
+            self.assertEqual(res2["status"], "SUPPRESSED_COOLDOWN")
+
+    @patch("radar_engine.requests.post")
+    def test_12_test_alert_null_rpc_block(self, mock_post):
+        """GLM R-4: When RPC is down, send_test_alert logs block as None/Desconocido with zero fabricated numbers."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_post.return_value = mock_resp
+
+        with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "mock_token", "TELEGRAM_CHAT_ID": "123456"}):
+            res = self.radar.send_test_alert(pool_name="PancakeSwap_WBNB_USDT", block_number=None)
+            self.assertEqual(res["status"], "TEST_ALERT_DISPATCHED")
+            self.assertIsNone(res["block_number"])
+            self.assertIsNone(res["incident"]["block_number"])
+
+            call_kwargs = mock_post.call_args[1]
+            text = call_kwargs["json"]["text"]
+            self.assertIn("Desconocido (RPC caído)", text)
+            self.assertNotIn("42718900", text)
 
 
 if __name__ == "__main__":

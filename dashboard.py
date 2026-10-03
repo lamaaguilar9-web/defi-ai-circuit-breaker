@@ -451,7 +451,7 @@ def trigger_radar_test_alert(request: Request):
             auth_header = auth_header[7:].strip()
         if auth_header != ADMIN_AUTH_TOKEN:
             return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Test alert restricted to authorized operator"})
-    block = sensor.get_bnb_block_number() or 42718900
+    block = sensor.get_bnb_block_number()
     res = radar.send_test_alert(pool_name="PancakeSwap_WBNB_USDT", block_number=block)
     return JSONResponse(content=res)
 
