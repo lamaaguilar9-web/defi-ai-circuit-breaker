@@ -146,3 +146,7 @@ Passive, zero-privilege watcher monitoring public liquidity pools:
 ---
 *Developed by Luis Aguilar & SentinelLab AI.*
 
+---
+
+> **Privacidad:** DeFi AI Circuit Breaker es una herramienta de infraestructura interna. No recopila datos personales de usuarios finales; procesa únicamente datos públicos de blockchain y telemetría técnica generada por el propio sistema. Contacto: luis.growthhq@gmail.com
+
