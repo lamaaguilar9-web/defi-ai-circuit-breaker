@@ -9,6 +9,7 @@ import json
 import time
 import logging
 import threading
+import collections
 from typing import Dict, Any, Optional, List
 import requests
 
@@ -206,6 +207,9 @@ class TelemetrySensor:
         self.last_pancake_onchain_state: Dict[str, Any] = {}
         self.hwm_liquidity: Optional[int] = None
         self.baseline_price_usd: Optional[float] = None
+        self._liq_history = collections.deque(maxlen=300)
+        self._price_history = collections.deque(maxlen=300)
+        self.RADAR_REF_WINDOW_SECONDS = float(os.getenv("RADAR_REF_WINDOW_SECONDS", "120"))
 
     def load_catalog_from_config(self, config_path: Optional[str] = None):
         """Loads additional radar pools from JSON configuration dynamically (GLM RADAR AR-2)."""
@@ -348,23 +352,25 @@ class TelemetrySensor:
                         curr_price = onchain.get("price_usd")
 
                         with self._lock:
+                            # H-9d: referencia RODANTE (ventana corta) — nunca máximos ni arranques congelados
                             if self.hwm_liquidity is None or liq > self.hwm_liquidity:
-                                self.hwm_liquidity = liq
-                            if (self.baseline_price_usd is None or self.baseline_price_usd <= 0) and curr_price:
-                                self.baseline_price_usd = curr_price
+                                self.hwm_liquidity = liq  # solo informativo; ya NO dispara
+                            now_ts = time.time()
+                            self._liq_history.append((now_ts, liq))
+                            self._price_history.append((now_ts, curr_price))
+                            ref_ts = now_ts - self.RADAR_REF_WINDOW_SECONDS
+                            ref_liq = next((v for t, v in self._liq_history if t >= ref_ts), None)
+                            ref_price = next((v for t, v in self._price_history if t >= ref_ts), None)
 
-                            hwm = self.hwm_liquidity
-                            base_price = self.baseline_price_usd
-
-                        liq_drain_pct = max(0.0, (hwm - liq) / hwm) if (hwm and hwm > 0) else 0.0
-                        price_drop_pct = max(0.0, (base_price - curr_price) / base_price) if (base_price and curr_price and base_price > 0) else 0.0
+                        liq_drain_pct = max(0.0, (ref_liq - liq) / ref_liq) if (ref_liq and ref_liq > 0) else 0.0
+                        price_drop_pct = max(0.0, (ref_price - curr_price) / ref_price) if (ref_price and curr_price and ref_price > 0) else 0.0
 
                         pool["sqrtPriceX96"] = sqrt_p
                         pool["tick"] = onchain["tick"]
                         pool["liquidity"] = liq
-                        pool["hwm_liquidity"] = hwm
+                        pool["hwm_liquidity"] = self.hwm_liquidity
                         pool["live_price_usd"] = curr_price
-                        pool["baseline_price_usd"] = base_price
+                        pool["baseline_price_usd"] = ref_price
                         pool["onchain_liquidity_drain_pct"] = round(liq_drain_pct * 100, 2)
                         pool["onchain_price_drop_pct"] = round(price_drop_pct * 100, 2)
 
