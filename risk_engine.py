@@ -1,7 +1,7 @@
 """
 DeFi AI Circuit Breaker - Multi-Chain Risk & Mathematical Invariant Engine
 Evaluates deterministic conservation laws across AMMs (PancakeSwap, Uniswap, Camelot)
-and Lending Protocols (Venus, Aave) with sub-45ms execution latency.
+and Lending Protocols (Venus, Aave) with deterministic invariant evaluations.
 """
 
 import time

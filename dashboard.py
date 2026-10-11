@@ -81,7 +81,7 @@ HTML_TEMPLATE = """
                 <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white">DeFi AI <span class="text-bnbgold">Circuit Breaker</span></h1>
                 <span class="text-xs uppercase px-2.5 py-0.5 rounded-full font-bold bg-bnbgold/20 text-bnbgold border border-bnbgold/40">BNB Chain Native • BEP-20</span>
             </div>
-            <p class="text-xs md:text-sm text-slate-400 mt-1">Autonomous Sub-45ms Invariant Protection • Dedicated Real-Time Defense for PancakeSwap & Venus Protocol</p>
+            <p class="text-xs md:text-sm text-slate-400 mt-1">Invariant Protection • Dedicated Real-Time Defense for PancakeSwap & Venus Protocol</p>
         </div>
 
         <div class="flex items-center gap-4">
@@ -136,7 +136,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div class="mt-3">
                     <div class="text-xs text-slate-400">Total Monitored TVL (CATALOG)</div>
-                    <div id="catalog-total-tvl" class="text-xl font-mono font-bold text-emerald-400 mt-0.5">$32,700,000.00</div>
+                    <div id="catalog-total-tvl" class="text-xl font-mono font-bold text-emerald-400 mt-0.5">--</div>
                 </div>
                 <div class="mt-2 text-xs text-slate-400 flex justify-between">
                     <span>Coverage: <span class="text-slate-300 font-mono">Pancake + Venus</span></span>
@@ -148,7 +148,7 @@ HTML_TEMPLATE = """
             <div class="bg-cardbg border border-slate-800/80 rounded-2xl p-5 shadow-xl">
                 <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
                     <span class="flex items-center gap-1.5"><span class="text-bnbgold">⏱️</span> Mitigation SLA</span>
-                    <span class="text-emerald-400 font-mono">SLA Target: &lt; 45ms</span>
+                    <span class="text-emerald-400 font-mono">SLA Target: Deterministic</span>
                 </div>
                 <div class="mt-3">
                     <div class="text-xs text-slate-400">Measured Mitigation Latency</div>
@@ -156,7 +156,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div class="mt-2 text-xs text-slate-400 flex justify-between">
                     <span>Compute Time: <span id="ui-compute-time" class="text-emerald-400 font-mono">-- ms</span></span>
-                    <span>SLA Target: <span class="text-emerald-400 font-mono">&lt; 45ms</span></span>
+                    <span>SLA Target: <span class="text-emerald-400 font-mono">Deterministic Dispatch</span></span>
                 </div>
             </div>
         </div>
@@ -197,7 +197,7 @@ HTML_TEMPLATE = """
                     <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
                         <div class="text-xs text-slate-400 font-bold">Emergency Action</div>
                         <div class="text-sm font-mono font-bold text-bnbgold mt-1">BNB_GLOBAL_PAUSE</div>
-                        <div class="text-[10px] text-emerald-400 mt-1">Sub-45ms Mitigation Dispatch</div>
+                        <div class="text-[10px] text-emerald-400 mt-1">Invariant Protection Dispatch</div>
                     </div>
                 </div>
 

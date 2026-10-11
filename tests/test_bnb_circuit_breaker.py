@@ -61,7 +61,7 @@ class TestBNBCircuitBreaker(unittest.TestCase):
         self.assertEqual(breaker_res['execution_status'], 'PAUSE_DRY_RUN')
         self.assertLess(breaker_res['mitigation_latency_ms'], 45.0)
 
-    def test_03_sub_45ms_mitigation_sla(self):
+    def test_03_deterministic_mitigation_latency(self):
         base_pool = self.sensor.sample_monitored_pool('PancakeSwap_WBNB_USDT')
         attack_pool = dict(base_pool)
         attack_pool['tvl_usd'] = 6000000.0
