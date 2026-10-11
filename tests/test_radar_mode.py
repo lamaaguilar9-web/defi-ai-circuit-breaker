@@ -359,17 +359,18 @@ class TestRadarModoSombra(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIsInstance(resp.json(), list)
 
-        # POST /api/radar/test-alert
-        with patch.object(dashboard.radar, "send_test_alert") as mock_send:
-            mock_send.return_value = {
-                "status": "TEST_ALERT_DISPATCHED",
-                "radar_mode": "SOLO_LECTURA",
-                "pool_name": "PancakeSwap_WBNB_USDT",
-                "telegram_notified": True
-            }
-            resp = client.post("/api/radar/test-alert")
-            self.assertEqual(resp.status_code, 200)
-            self.assertEqual(resp.json()["status"], "TEST_ALERT_DISPATCHED")
+        # POST /api/radar/test-alert (with admin auth per K-1 fail-closed)
+        with patch.dict(os.environ, {"SENTINEL_ADMIN_KEY": "test_secret_key"}):
+            with patch.object(dashboard.radar, "send_test_alert") as mock_send:
+                mock_send.return_value = {
+                    "status": "TEST_ALERT_DISPATCHED",
+                    "radar_mode": "SOLO_LECTURA",
+                    "pool_name": "PancakeSwap_WBNB_USDT",
+                    "telegram_notified": True
+                }
+                resp = client.post("/api/radar/test-alert", headers={"X-Sentinel-Auth": "test_secret_key"})
+                self.assertEqual(resp.status_code, 200)
+                self.assertEqual(resp.json()["status"], "TEST_ALERT_DISPATCHED")
 
     @patch("radar_engine.requests.post")
     def test_11_cooldown_persistence_across_restarts(self, mock_post):

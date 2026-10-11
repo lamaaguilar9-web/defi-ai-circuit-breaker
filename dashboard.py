@@ -1,13 +1,13 @@
 """
 DeFi AI Circuit Breaker - Dedicated BNB Chain (BEP-20) Real-Time Guardian Web Dashboard
 FastAPI + Tailwind visual command center monitoring BNB Chain liquidity pools
-(PancakeSwap v3 & Venus Protocol) with sub-45ms autonomous exploit mitigation.
-Exclusively engineered for BNB Chain Builder Grants & Binance Agentic AI Challenge.
+(PancakeSwap v3 & Venus Protocol) with real-time invariant breach detection.
 """
 
 import os
 import time
 import logging
+import hmac
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 import uvicorn
@@ -257,7 +257,7 @@ HTML_TEMPLATE = """
 
         <!-- Footer -->
         <footer class="text-center py-6 text-xs text-slate-500 border-t border-slate-800">
-            DeFi AI Circuit Breaker • Natively engineered for BNB Chain (BEP-20) • Submitted to BNB Chain Builder Grants & Binance Agentic AI Challenge
+            DeFi AI Circuit Breaker • Natively engineered for BNB Chain (BEP-20) • Autonomous Invariant Shield
         </footer>
 
     </main>
@@ -308,17 +308,35 @@ HTML_TEMPLATE = """
             }
         }
 
-        const AUTH_TOKEN = "{{SENTINEL_ADMIN_KEY_INJECTED}}";
+        let sessionAuthKey = sessionStorage.getItem('sentinel_admin_key') || '';
+
+        function getAuthHeader() {
+            if (!sessionAuthKey) {
+                const entered = prompt("Ingrese SENTINEL_ADMIN_KEY para ejecutar esta acción autorizada:");
+                if (entered) {
+                    sessionAuthKey = entered.trim();
+                    sessionStorage.setItem('sentinel_admin_key', sessionAuthKey);
+                }
+            }
+            return sessionAuthKey;
+        }
 
         async function triggerSimulation(scenario) {
+            const token = getAuthHeader();
             const headers = {};
-            if (AUTH_TOKEN) {
-                headers['X-Sentinel-Auth'] = AUTH_TOKEN;
+            if (token) {
+                headers['X-Sentinel-Auth'] = token;
             }
             const res = await fetch('/api/simulate/' + scenario, {
                 method: 'POST',
                 headers: headers
             });
+            if (res.status === 403) {
+                alert("Acceso denegado: SENTINEL_ADMIN_KEY inválida o no configurada en el servidor.");
+                sessionStorage.removeItem('sentinel_admin_key');
+                sessionAuthKey = '';
+                return;
+            }
             const data = await res.json();
 
             // Update UI with attack results
@@ -343,14 +361,21 @@ HTML_TEMPLATE = """
         }
 
         async function resetSystem() {
+            const token = getAuthHeader();
             const headers = {};
-            if (AUTH_TOKEN) {
-                headers['X-Sentinel-Auth'] = AUTH_TOKEN;
+            if (token) {
+                headers['X-Sentinel-Auth'] = token;
             }
-            await fetch('/api/reset', {
+            const res = await fetch('/api/reset', {
                 method: 'POST',
                 headers: headers
             });
+            if (res.status === 403) {
+                alert("Acceso denegado: SENTINEL_ADMIN_KEY inválida o no configurada en el servidor.");
+                sessionStorage.removeItem('sentinel_admin_key');
+                sessionAuthKey = '';
+                return;
+            }
             document.getElementById('threat-pct').innerText = '0.0%';
             document.getElementById('threat-pct').className = 'text-5xl font-mono font-black text-emerald-400 transition-all';
             document.getElementById('threat-level').innerText = 'NORMAL_SECURE';
@@ -378,15 +403,26 @@ HTML_TEMPLATE = """
 </html>
 """
 
-ADMIN_AUTH_TOKEN = os.environ.get("SENTINEL_ADMIN_KEY")
+def verify_admin_auth(request: Request) -> bool:
+    """
+    K-1: Fail-closed authentication check for privileged operator endpoints.
+    If SENTINEL_ADMIN_KEY is not defined or empty in the environment, access is strictly denied (403).
+    Uses constant-time comparison via hmac.compare_digest to prevent timing attacks.
+    """
+    admin_key = os.environ.get("SENTINEL_ADMIN_KEY")
+    if not admin_key:
+        return False
+    auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        auth_header = auth_header[7:].strip()
+    return hmac.compare_digest(auth_header, admin_key)
 
 # Start autonomous continuous sensor daemon on launch (GLM DEFI-C6 + RADAR MODO SOMBRA)
 sensor.start_monitoring_daemon(engine, breaker, radar=radar)
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    rendered = HTML_TEMPLATE.replace("{{SENTINEL_ADMIN_KEY_INJECTED}}", ADMIN_AUTH_TOKEN or "")
-    return HTMLResponse(content=rendered)
+    return HTMLResponse(content=HTML_TEMPLATE)
 
 @app.get("/api/telemetry")
 def get_telemetry():
@@ -402,12 +438,8 @@ def get_pool_details(pool_name: str):
 
 @app.post("/api/simulate/{scenario}")
 def simulate_attack(scenario: str, request: Request):
-    if ADMIN_AUTH_TOKEN:
-        auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
-        if auth_header.startswith("Bearer "):
-            auth_header = auth_header[7:].strip()
-        if auth_header != ADMIN_AUTH_TOKEN:
-            return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Simulation controls restricted to authorized operator"})
+    if not verify_admin_auth(request):
+        return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Simulation controls restricted to authorized operator"})
     res = simulate_multi_chain_attack(scenario)
     global last_incident
     last_incident = res
@@ -415,12 +447,8 @@ def simulate_attack(scenario: str, request: Request):
 
 @app.post("/api/reset")
 def reset_breaker(request: Request):
-    if ADMIN_AUTH_TOKEN:
-        auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
-        if auth_header.startswith("Bearer "):
-            auth_header = auth_header[7:].strip()
-        if auth_header != ADMIN_AUTH_TOKEN:
-            return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Reset controls restricted to authorized operator"})
+    if not verify_admin_auth(request):
+        return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Reset controls restricted to authorized operator"})
     global breaker, last_incident
     breaker.reset()
     last_incident = None
@@ -445,12 +473,8 @@ def get_radar_incidents(limit: int = 50):
 
 @app.post("/api/radar/test-alert")
 def trigger_radar_test_alert(request: Request):
-    if ADMIN_AUTH_TOKEN:
-        auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
-        if auth_header.startswith("Bearer "):
-            auth_header = auth_header[7:].strip()
-        if auth_header != ADMIN_AUTH_TOKEN:
-            return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Test alert restricted to authorized operator"})
+    if not verify_admin_auth(request):
+        return JSONResponse(status_code=403, content={"error": "FORBIDDEN: Test alert restricted to authorized operator"})
     block = sensor.get_bnb_block_number()
     res = radar.send_test_alert(pool_name="PancakeSwap_WBNB_USDT", block_number=block)
     return JSONResponse(content=res)
