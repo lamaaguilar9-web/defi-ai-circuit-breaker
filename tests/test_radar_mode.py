@@ -78,7 +78,7 @@ class TestRadarModoSombra(unittest.TestCase):
 
     @patch("radar_engine.requests.post")
     def test_02_breach_detection_on_drain_threshold(self, mock_post):
-        """AR-1, AR-4: Invariant breach triggers alert on liquidity drain >= 20%."""
+        """AR-1, AR-4: Invariant breach triggers alert on liquidity drain >= 20% for v2 pools."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_post.return_value = mock_resp
@@ -86,12 +86,12 @@ class TestRadarModoSombra(unittest.TestCase):
         # Set mock Telegram credentials
         with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "mock_token", "TELEGRAM_CHAT_ID": "123456"}):
             base_pool = {"tvl_usd": 10000000.0, "live_price_usd": 500.0}
-            # Drain 25% ($2.5M loss)
+            # Drain 25% ($2.5M loss) on v2 pool
             attack_pool = {
-                "pool_name": "PancakeSwap_WBNB_USDT",
+                "pool_name": "PancakeSwap_v2_WBNB_BUSD",
                 "chain": "BNB Chain",
-                "protocol": "PancakeSwap v3",
-                "address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+                "protocol": "PancakeSwap v2",
+                "address": "0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16",
                 "tvl_usd": 7500000.0,
                 "onchain_liquidity_drain_pct": 25.0,
                 "onchain_price_drop_pct": 5.0,
@@ -109,9 +109,30 @@ class TestRadarModoSombra(unittest.TestCase):
             call_kwargs = mock_post.call_args[1]
             payload = call_kwargs["json"]
             self.assertIn("[RADAR solo lectura]", payload["text"])
-            self.assertIn("PancakeSwap_WBNB_USDT", payload["text"])
+            self.assertIn("PancakeSwap_v2_WBNB_BUSD", payload["text"])
             self.assertIn("25.00%", payload["text"])
             self.assertIn("#42718950", payload["text"])
+
+    @patch("radar_engine.requests.post")
+    def test_02b_v3_drain_ignored_no_price_drop(self, mock_post):
+        """H-9e: In v3 pools, tick liquidity drain without price drop must NOT trigger alert."""
+        base_pool = {"tvl_usd": 10000000.0, "live_price_usd": 500.0}
+        attack_pool = {
+            "pool_name": "PancakeSwap_WBNB_USDT",
+            "chain": "BNB Chain",
+            "protocol": "PancakeSwap v3",
+            "address": "0x36696169C63e42cd08ce11f5deeBbCeBae652050",
+            "tvl_usd": 7500000.0,
+            "onchain_liquidity_drain_pct": 25.0,
+            "onchain_price_drop_pct": 2.0,
+            "live_price_usd": 490.0,
+            "baseline_price_usd": 500.0
+        }
+
+        res = self.radar.evaluate_and_alert(attack_pool, base_pool, block_number=42718951)
+        self.assertFalse(res["breach_detected"])
+        self.assertEqual(res["status"], "NORMAL_SECURE")
+        mock_post.assert_not_called()
 
     @patch("radar_engine.requests.post")
     def test_03_breach_detection_on_price_drop_threshold(self, mock_post):
@@ -167,8 +188,9 @@ class TestRadarModoSombra(unittest.TestCase):
         with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "mock_token", "TELEGRAM_CHAT_ID": "123456"}):
             base_pool = {"tvl_usd": 10000000.0}
             breach_pool = {
-                "pool_name": "PancakeSwap_WBNB_USDT",
+                "pool_name": "PancakeSwap_v2_WBNB_BUSD",
                 "chain": "BNB Chain",
+                "protocol": "PancakeSwap v2",
                 "tvl_usd": 7000000.0,
                 "onchain_liquidity_drain_pct": 30.0,
                 "onchain_price_drop_pct": 0.0
@@ -186,8 +208,9 @@ class TestRadarModoSombra(unittest.TestCase):
 
             # Different pool: Not suppressed by first pool's cooldown
             diff_pool = {
-                "pool_name": "Uniswap_v3_WETH_USDC",
+                "pool_name": "Uniswap_v2_WETH_USDC",
                 "chain": "Ethereum",
+                "protocol": "Uniswap v2",
                 "tvl_usd": 30000000.0,
                 "onchain_liquidity_drain_pct": 25.0
             }
@@ -212,8 +235,9 @@ class TestRadarModoSombra(unittest.TestCase):
         with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "mock_token", "TELEGRAM_CHAT_ID": "123456"}):
             base_pool = {"tvl_usd": 10000000.0}
             breach_pool = {
-                "pool_name": "PancakeSwap_WBNB_USDT",
+                "pool_name": "PancakeSwap_v2_WBNB_BUSD",
                 "chain": "BNB Chain",
+                "protocol": "PancakeSwap v2",
                 "tvl_usd": 7000000.0,
                 "onchain_liquidity_drain_pct": 30.0
             }

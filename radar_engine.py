@@ -177,6 +177,10 @@ class RadarModoSombra:
         effective_drain_pct = max(tvl_drain_pct, onchain_drain_pct)
 
         effective_price_drop_pct = current_pool.get("onchain_price_drop_pct", 0.0)
+        effective_price_deviation_pct = max(
+            current_pool.get("onchain_price_deviation_pct", 0.0),
+            effective_price_drop_pct
+        )
 
         # Baseline & current price
         price_before = current_pool.get("baseline_price_usd") or (baseline_pool or {}).get("live_price_usd", 0.0)
@@ -185,14 +189,19 @@ class RadarModoSombra:
         threat_score = (evaluation or {}).get("threat_score", 0.0)
         threat_level = (evaluation or {}).get("threat_level", "NORMAL_SECURE")
 
+        # H-9e: Alertas v1 SOLO por precio (|precio pool vs referencia rodante 120s| >= 15%).
+        # Se deshabilitan alertas por drain en pools v3 (drain_pct queda como campo informativo, sin alertar).
+        is_v3 = "v3" in protocol.lower() or "v3" in current_pool.get("protocol_type", "").lower()
+
         # Breach condition check
         breach_reasons = []
-        if effective_drain_pct >= DRAIN_THRESHOLD_PCT:
+        if not is_v3 and effective_drain_pct >= DRAIN_THRESHOLD_PCT:
             breach_reasons.append(f"DRAIN_EXCEEDED_{effective_drain_pct:.2f}%")
-        if effective_price_drop_pct >= PRICE_DROP_THRESHOLD_PCT:
-            breach_reasons.append(f"PRICE_DROP_EXCEEDED_{effective_price_drop_pct:.2f}%")
+        if effective_price_deviation_pct >= PRICE_DROP_THRESHOLD_PCT:
+            breach_reasons.append(f"PRICE_DROP_EXCEEDED_{effective_price_deviation_pct:.2f}%")
         if threat_score >= 0.82 or threat_level == "CRITICAL_EXPLOIT":
-            breach_reasons.append(f"THREAT_SCORE_EXPLOIT_{threat_score:.3f}")
+            if effective_price_deviation_pct >= 5.0 or (not is_v3 and effective_drain_pct >= 10.0):
+                breach_reasons.append(f"THREAT_SCORE_EXPLOIT_{threat_score:.3f}")
 
         if not breach_reasons:
             return {
@@ -200,7 +209,7 @@ class RadarModoSombra:
                 "status": "NORMAL_SECURE",
                 "pool_name": pool_name,
                 "drain_pct": effective_drain_pct,
-                "price_drop_pct": effective_price_drop_pct
+                "price_drop_pct": effective_price_deviation_pct
             }
 
         now = time.time()
@@ -212,7 +221,7 @@ class RadarModoSombra:
             last_alert = self.cooldowns.get(pool_name, 0.0)
             if (now - last_alert) < self.cooldown_seconds:
                 remaining_s = int(self.cooldown_seconds - (now - last_alert))
-                logger.info(
+                logger.debug(
                     f"[RADAR solo lectura] [COOLDOWN] Invariant breach detected in {pool_name} "
                     f"but alert suppressed ({remaining_s}s remaining in 15m cooldown window)."
                 )
@@ -246,16 +255,21 @@ class RadarModoSombra:
         # 3. Format Telegram Alert
         reasons_desc = " | ".join(breach_reasons)
         block_desc = f"#{block_number}" if block_number else "Desconocido (RPC caído)"
+        drain_line = (
+            f"• <b>Drain Tick (Informativo v3):</b> {effective_drain_pct:.2f}%\n"
+            if is_v3
+            else f"• <b>Drain Real Medido:</b> {effective_drain_pct:.2f}% (Umbral: ≥{DRAIN_THRESHOLD_PCT}%)\n"
+        )
         msg = (
             f"🛡️ <b>[RADAR solo lectura] INVARIANT BREACH DETECTED</b>\n\n"
             f"• <b>Cadena:</b> {chain}\n"
             f"• <b>Pool:</b> {pool_name} (<code>{address}</code>)\n"
             f"• <b>Protocolo:</b> {protocol}\n"
             f"• <b>Infracción:</b> {reasons_desc}\n"
-            f"• <b>Drain Real Medido:</b> {effective_drain_pct:.2f}% (Umbral: ≥{DRAIN_THRESHOLD_PCT}%)\n"
-            f"• <b>Caída de Precio:</b> {effective_price_drop_pct:.2f}% (Umbral: ≥{PRICE_DROP_THRESHOLD_PCT}%)\n"
+            f"{drain_line}"
+            f"• <b>Desviación de Precio:</b> {effective_price_deviation_pct:.2f}% (Umbral: ≥{PRICE_DROP_THRESHOLD_PCT}%)\n"
             f"• <b>Precio Antes/Después:</b> ${price_before:,.2f} ➔ ${price_after:,.2f}\n"
-            f"• <b>TVL Estimado (Catálogo):</b> ${prev_tvl:,.2f} ➔ ${curr_tvl:,.2f}\n"
+            f"• <b>TVL Catálogo:</b> ${curr_tvl:,.2f}\n"
             f"• <b>Bloque On-Chain:</b> {block_desc}\n"
             f"• <b>Timestamp:</b> {iso_str}\n"
             f"• <b>Amenaza:</b> {threat_level} (Score: {threat_score * 100:.1f}%)\n"
@@ -269,11 +283,11 @@ class RadarModoSombra:
         # 5. Log to Journal with Timestamp
         logger.warning(
             f"[RADAR solo lectura] [BREACH] Invariant breach detected: Pool={pool_name}, "
-            f"Chain={chain}, Drain={effective_drain_pct}%, PriceDrop={effective_price_drop_pct}%, "
+            f"Chain={chain}, Drain={effective_drain_pct}%, PriceDrop={effective_price_deviation_pct}%, "
             f"Block={block_desc}, TelegramSent={sent_tg}, DailyCount={new_count}/{self.max_daily_alerts}"
         )
 
-        # 6. Append-Only Incident Evidence
+        # 6. Append-Only Incident Evidence (Orden H-9e: Removidas extrapolaciones ficticias de TVL)
         incident_entry = {
             "timestamp": now,
             "iso_time": datetime.now(timezone.utc).isoformat(),
@@ -285,9 +299,8 @@ class RadarModoSombra:
             "address": address,
             "breach_reasons": breach_reasons,
             "drain_pct": effective_drain_pct,
-            "price_drop_pct": effective_price_drop_pct,
-            "tvl_before_usd_catalog_estimate": prev_tvl,
-            "tvl_after_usd_catalog_estimate": curr_tvl,
+            "price_drop_pct": effective_price_deviation_pct,
+            "tvl_catalog_usd": curr_tvl,
             "price_before_usd": price_before,
             "price_after_usd": price_after,
             "block_number": block_number,

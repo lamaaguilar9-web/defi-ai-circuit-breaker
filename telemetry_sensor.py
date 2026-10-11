@@ -114,6 +114,8 @@ class TelemetrySensor:
     Connects to live BSC on-chain state (PancakeSwap v3 slot0 / liquidity) and monitors invariant deltas.
     """
     PANCAKESWAP_V3_WBNB_USDT = "0x36696169C63e42cd08ce11f5deeBbCeBae652050"
+    PANCAKESWAP_V3_SLOT0_SELECTOR = "0x3850c7bd"      # keccak256("slot0()")[:4] -> (sqrtPriceX96, tick, ...)
+    PANCAKESWAP_V3_LIQUIDITY_SELECTOR = "0x1a686502"  # keccak256("liquidity()")[:4] -> uint128 in-range tick liquidity (Orden H-9e)
 
     def __init__(self, timeout: int = 4):
         self.bnb_adapter = ChainAdapter("BNB Chain (BEP-20)", RPC_ENDPOINTS["BNB"], timeout)
@@ -210,6 +212,8 @@ class TelemetrySensor:
         self._liq_history = collections.deque(maxlen=300)
         self._price_history = collections.deque(maxlen=300)
         self.RADAR_REF_WINDOW_SECONDS = float(os.getenv("RADAR_REF_WINDOW_SECONDS", "120"))
+        self._last_breach_log_ts: float = 0.0
+        self.BREACH_LOG_COOLDOWN_SECONDS: float = float(os.getenv("RADAR_COOLDOWN_SECONDS", "900"))
 
     def load_catalog_from_config(self, config_path: Optional[str] = None):
         """Loads additional radar pools from JSON configuration dynamically (GLM RADAR AR-2)."""
@@ -235,11 +239,15 @@ class TelemetrySensor:
 
     def get_pancakeswap_v3_onchain_state(self) -> Dict[str, Any]:
         """Queries live PancakeSwap v3 WBNB/USDT slot0() and liquidity() via real BSC eth_call."""
+        # slot0() -> returns sqrtPriceX96 and tick
         slot0_hex, lat = self.bnb_adapter._post_rpc(
-            "eth_call", [{"to": self.PANCAKESWAP_V3_WBNB_USDT, "data": "0x3850c7bd"}, "latest"]
+            "eth_call", [{"to": self.PANCAKESWAP_V3_WBNB_USDT, "data": self.PANCAKESWAP_V3_SLOT0_SELECTOR}, "latest"]
         )
+        # liquidity() -> selector 0x1a686502 = keccak256("liquidity()")[:4]
+        # In Uniswap/PancakeSwap v3, returns uint128 active in-range virtual liquidity L for current tick.
+        # Informative telemetry only; decoupled from breach alerting per Orden H-9e.
         liq_hex, _ = self.bnb_adapter._post_rpc(
-            "eth_call", [{"to": self.PANCAKESWAP_V3_WBNB_USDT, "data": "0x1a686502"}, "latest"]
+            "eth_call", [{"to": self.PANCAKESWAP_V3_WBNB_USDT, "data": self.PANCAKESWAP_V3_LIQUIDITY_SELECTOR}, "latest"]
         )
 
         sqrt_p = None
@@ -364,6 +372,7 @@ class TelemetrySensor:
 
                         liq_drain_pct = max(0.0, (ref_liq - liq) / ref_liq) if (ref_liq and ref_liq > 0) else 0.0
                         price_drop_pct = max(0.0, (ref_price - curr_price) / ref_price) if (ref_price and curr_price and ref_price > 0) else 0.0
+                        price_deviation_pct = abs(ref_price - curr_price) / ref_price if (ref_price and curr_price and ref_price > 0) else 0.0
 
                         pool["sqrtPriceX96"] = sqrt_p
                         pool["tick"] = onchain["tick"]
@@ -373,9 +382,10 @@ class TelemetrySensor:
                         pool["baseline_price_usd"] = ref_price
                         pool["onchain_liquidity_drain_pct"] = round(liq_drain_pct * 100, 2)
                         pool["onchain_price_drop_pct"] = round(price_drop_pct * 100, 2)
+                        pool["onchain_price_deviation_pct"] = round(price_deviation_pct * 100, 2)
 
-                        base_tvl = self.pools_directory["BNB"]["PancakeSwap_WBNB_USDT"]["tvl_usd"]
-                        pool["tvl_usd"] = round(base_tvl * (1.0 - liq_drain_pct), 2)
+                        # H-9e: Eliminada extrapolación falsa de TVL basada en drain de liquidez concentrada
+                        pool["tvl_usd"] = self.pools_directory["BNB"]["PancakeSwap_WBNB_USDT"]["tvl_usd"]
                 return pool
         return dict(self.pools_directory["BNB"]["PancakeSwap_WBNB_USDT"])
 
@@ -415,7 +425,12 @@ class TelemetrySensor:
                         current_pool = self.sample_monitored_pool("PancakeSwap_WBNB_USDT")
                         evaluation = risk_engine.evaluate_pool_state(current_pool, baseline_pool)
                         if evaluation.get("threat_score", 0.0) >= circuit_breaker.sensitivity_threshold:
-                            logger.warning(f"[!] Autonomous Invariant Breach detected at block #{curr_block}!")
+                            now_warn = time.time()
+                            if (now_warn - self._last_breach_log_ts) >= self.BREACH_LOG_COOLDOWN_SECONDS:
+                                logger.warning(f"[!] Autonomous Invariant Breach detected at block #{curr_block}!")
+                                self._last_breach_log_ts = now_warn
+                            else:
+                                logger.debug(f"[!] Invariant Breach detected at block #{curr_block} (suppressed by log cooldown)")
                             circuit_breaker.process_telemetry(evaluation)
                         if radar:
                             radar.evaluate_and_alert(current_pool, baseline_pool, curr_block, evaluation)
