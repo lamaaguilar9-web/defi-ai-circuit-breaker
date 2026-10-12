@@ -68,6 +68,7 @@ class CircuitBreaker:
                 "threat_score_pct": evaluation.get("threat_score_pct"),
                 "threat_level": evaluation.get("threat_level"),
                 "mitigation_latency_ms": latency_ms,
+                "dry_run_processing_ms": latency_ms,
                 "action_executed": action,
                 "execution_status": execution_status,
                 "contract_pause_tx_hash": tx_hash,

@@ -415,7 +415,10 @@ def verify_admin_auth(request: Request) -> bool:
     auth_header = request.headers.get("x-sentinel-auth") or request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
         auth_header = auth_header[7:].strip()
-    return hmac.compare_digest(auth_header, admin_key)
+    try:
+        return hmac.compare_digest(auth_header.encode("utf-8"), admin_key.encode("utf-8"))
+    except Exception:
+        return False
 
 # Start autonomous continuous sensor daemon on launch (GLM DEFI-C6 + RADAR MODO SOMBRA)
 sensor.start_monitoring_daemon(engine, breaker, radar=radar)

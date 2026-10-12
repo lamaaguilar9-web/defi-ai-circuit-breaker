@@ -117,6 +117,14 @@ class TestDashboardK1Auth(unittest.TestCase):
                 )
                 self.assertEqual(resp.status_code, 200)
 
+    def test_06_non_ascii_header_rejected_with_403_no_type_error(self):
+        """M1 Fix: Non-ASCII characters in auth header return False without TypeError."""
+        with patch.dict(os.environ, {"SENTINEL_ADMIN_KEY": "valid_key_ascii_123"}):
+            mock_request = MagicMock()
+            mock_request.headers.get.side_effect = lambda k, default="": "clave_\xe9_invalida" if k == "x-sentinel-auth" else default
+            result = dashboard.verify_admin_auth(mock_request)
+            self.assertFalse(result)
+
 
 if __name__ == "__main__":
     unittest.main()
