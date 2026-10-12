@@ -353,9 +353,9 @@ HTML_TEMPLATE = """
 
             document.getElementById('inc-action').innerText = data.action_executed || 'BNB_EMERGENCY_PAUSE';
             document.getElementById('inc-action').className = 'text-rose-400 font-bold';
-            document.getElementById('inc-latency').innerText = data.mitigation_latency_ms ? (data.mitigation_latency_ms + ' ms') : '-- ms';
-            document.getElementById('ui-mitigation-latency').innerText = data.mitigation_latency_ms ? (data.mitigation_latency_ms + ' ms') : '-- ms';
-            document.getElementById('ui-compute-time').innerText = data.compute_latency_ms ? (data.compute_latency_ms + ' ms') : (data.mitigation_latency_ms ? data.mitigation_latency_ms + ' ms' : '-- ms');
+            document.getElementById('inc-latency').innerText = data.dry_run_processing_ms ? (data.dry_run_processing_ms + ' ms') : '-- ms';
+            document.getElementById('ui-mitigation-latency').innerText = data.dry_run_processing_ms ? (data.dry_run_processing_ms + ' ms') : '-- ms';
+            document.getElementById('ui-compute-time').innerText = data.compute_latency_ms ? (data.compute_latency_ms + ' ms') : (data.dry_run_processing_ms ? data.dry_run_processing_ms + ' ms' : '-- ms');
             document.getElementById('inc-tx').innerText = data.contract_pause_tx_hash ? data.contract_pause_tx_hash : (data.execution_status || 'STANDBY_DRY_RUN (No Fabricated Hash)');
             document.getElementById('inc-tx').className = 'text-emerald-400 font-mono truncate mt-0.5';
         }

@@ -67,7 +67,6 @@ class CircuitBreaker:
                 "threat_score": threat_score,
                 "threat_score_pct": evaluation.get("threat_score_pct"),
                 "threat_level": evaluation.get("threat_level"),
-                "mitigation_latency_ms": latency_ms,
                 "dry_run_processing_ms": latency_ms,
                 "action_executed": action,
                 "execution_status": execution_status,
@@ -138,5 +137,5 @@ if __name__ == "__main__":
     }
 
     res = breaker.process_telemetry(mock_eval)
-    print(f"Result: {res['event']} | Latency: {res['mitigation_latency_ms']}ms | Tx: {res['contract_pause_tx_hash']} | Status: {res['execution_status']}")
+    print(f"Result: {res['event']} | Processing: {res['dry_run_processing_ms']}ms | Tx: {res['contract_pause_tx_hash']} | Status: {res['execution_status']}")
     print(f"Breaker State: {breaker.get_status()['state']}")
