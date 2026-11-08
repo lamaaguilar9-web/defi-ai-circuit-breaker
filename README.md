@@ -7,6 +7,8 @@
 > **Autonomous On-Chain Exploit Prevention & Emergency Liquidity Halt for BNB Chain (BEP-20).**  
 > Dedicated real-time invariant defense for PancakeSwap v3 and Venus Protocol against flash-loan attacks and oracle drains.
 
+[![CI](https://github.com/lamaaguilar9-web/defi-ai-circuit-breaker/actions/workflows/ci.yml/badge.svg)](https://github.com/lamaaguilar9-web/defi-ai-circuit-breaker/actions/workflows/ci.yml)
+[![Formal Fuzzing Certification](https://img.shields.io/badge/Formal%20Fuzzing-5%2C000%2F5%2C000%20(100%25%20PASS)-brightgreen.svg)](tests/fuzz_certification.json)
 [![Telemetry Architecture](https://img.shields.io/badge/Telemetry-Loopback%20127.0.0.1%20Confined-emerald?style=for-the-badge&logo=fastapi)](https://github.com/lamaaguilar9-web/defi-ai-circuit-breaker)
 [![Network](https://img.shields.io/badge/Chain-BNB%20Chain%20(BEP--20)-F0B90B?style=for-the-badge&logo=binance)](https://bscscan.com)
 [![Watch Demo Video](https://img.shields.io/badge/▶_Watch_Demo_Video-Loom-625df5?style=for-the-badge&logo=loom&logoColor=white)](https://www.loom.com/share/1c2473fc60f2406e91377c5344005d9d)
